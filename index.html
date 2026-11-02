@@ -4,7 +4,7 @@
 <script>/* 線上更新開機程式：手機上若已下載比 APK 內建更新的介面版本，就改用新版（存在 IndexedDB）。
    新版連續兩次沒有正常開啟 → 自動退回 APK 內建版本。網址加上 #builtin 也會強制使用內建版本。 */
 (function () {
-  var B = '1.0.0'; if (!window.__OTA) window.APP_BUILTIN = B;
+  var B = '1.0.1'; if (!window.__OTA) window.APP_BUILTIN = B;
   if (window.__OTA || location.hash.indexOf('builtin') >= 0) return;
   var v = null; try { v = JSON.parse(localStorage.getItem('ait.ota') || 'null'); } catch (e) {}
   function gt(a, b) { a = String(a).split('.').map(Number); b = String(b).split('.').map(Number); for (var i = 0; i < Math.max(a.length, b.length); i++) { var p = a[i] || 0, q = b[i] || 0; if (p !== q) return p > q; } return false; }
@@ -2486,7 +2486,7 @@ $('btnFloat').addEventListener('click', openFloat);
 /* ============================================================
    MOBILE GLUE — 導覽、設定頁、原生橋接、版本與更新、懸浮翻譯控制
    ============================================================ */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 var GH = {user: 'IanLin1120', repo: 'ai-translator',
   get pages(){ return 'https://' + this.user.toLowerCase() + '.github.io/' + this.repo + '/'; },
   get web(){ return 'https://github.com/' + this.user + '/' + this.repo; }};
