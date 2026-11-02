@@ -1,1 +1,1 @@
-{"app": "1.0.1", "apk": 10001, "apkName": "1.0.1", "minApk": "1.1.0", "notes": "修正 Claude 訂閱模式用 Google 帳號登入後卡在空白畫面（支援彈出式視窗）"}
+{"app": "1.1.0", "apk": 10100, "apkName": "1.1.0", "minApk": "1.1.0", "notes": "新增「Claude 訂閱」翻譯引擎：翻譯頁直接用你的 Claude 月訂閱額度翻譯，結果顯示在 App 介面（背景透過 Claude 網頁版翻譯器）；修正 Claude 訂閱模式用 Google 帳號登入後卡在空白畫面"}
