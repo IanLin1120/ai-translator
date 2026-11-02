@@ -25,6 +25,8 @@ import android.widget.Toast;
 /** Claude 訂閱模式：用內建瀏覽器開啟 claude.ai 上的網頁版翻譯器（翻譯消耗的是你的 Claude 月訂閱額度）。 */
 public class ClaudeActivity extends Activity {
     private WebView web;
+    private android.widget.FrameLayout holder;
+    private final java.util.ArrayList<WebView> popups = new java.util.ArrayList<WebView>();
     private ValueCallback<Uri[]> fileCb;
     private static final int REQ_FILE = 2001;
 
@@ -53,33 +55,31 @@ public class ClaudeActivity extends Activity {
         root.addView(bar, new LinearLayout.LayoutParams(-1, Util.dp(this, 46)));
 
         web = new WebView(this);
-        root.addView(web, new LinearLayout.LayoutParams(-1, 0, 1f));
+        holder = new android.widget.FrameLayout(this);
+        holder.addView(web, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        root.addView(holder, new LinearLayout.LayoutParams(-1, 0, 1f));
         setContentView(root);
 
-        WebSettings s = web.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setDatabaseEnabled(true);
-        s.setAllowFileAccess(false);
-        s.setMediaPlaybackRequiresUserGesture(false);
-        s.setSupportMultipleWindows(false);
-        s.setJavaScriptCanOpenWindowsAutomatically(true);
-        // 讓網站把它當成一般的手機版 Chrome（拿掉 WebView 標記）
-        s.setUserAgentString(s.getUserAgentString().replace("; wv", "").replace(" Version/4.0", ""));
-        CookieManager cm = CookieManager.getInstance();
-        cm.setAcceptCookie(true);
-        cm.setAcceptThirdPartyCookies(web, true);
+        setup(web);
 
         web.addJavascriptInterface(new Dl(), "AITD");
-        web.setWebViewClient(new WebViewClient() {
-            @Override public boolean shouldOverrideUrlLoading(WebView v, android.webkit.WebResourceRequest r) {
-                String sch = r.getUrl().getScheme();
-                if ("http".equals(sch) || "https".equals(sch) || "blob".equals(sch) || "data".equals(sch) || "about".equals(sch)) return false;
-                try { startActivity(new Intent(Intent.ACTION_VIEW, r.getUrl())); } catch (Throwable t) { /* ignore */ }
+        web.setWebViewClient(client());
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onCreateWindow(WebView v, boolean dialog, boolean userGesture, android.os.Message msg) {
+                final WebView p = new WebView(ClaudeActivity.this);
+                setup(p);
+                p.setWebViewClient(client());
+                p.setWebChromeClient(new WebChromeClient() {
+                    @Override public void onCloseWindow(WebView w) { closePopup(w); }
+                });
+                holder.addView(p, new android.widget.FrameLayout.LayoutParams(-1, -1));
+                popups.add(p);
+                WebView.WebViewTransport t = (WebView.WebViewTransport) msg.obj;
+                t.setWebView(p);
+                msg.sendToTarget();
                 return true;
             }
-        });
-        web.setWebChromeClient(new WebChromeClient() {
+            @Override public void onCloseWindow(WebView w) { if (w != web) closePopup(w); }
             @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (fileCb != null) fileCb.onReceiveValue(null);
                 fileCb = cb;
@@ -105,6 +105,41 @@ public class ClaudeActivity extends Activity {
         });
         String url = getIntent().getStringExtra("url");
         web.loadUrl(url == null || url.isEmpty() ? "https://claude.ai/" : url);
+    }
+
+    /** 共用設定：主視窗與「彈出式視窗」（Google 登入）都用同一組。 */
+    private void setup(WebView w) {
+        WebSettings s = w.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setAllowFileAccess(false);
+        s.setMediaPlaybackRequiresUserGesture(false);
+        s.setSupportMultipleWindows(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        // 讓網站把它當成一般的手機版 Chrome（拿掉 WebView 標記）
+        s.setUserAgentString(s.getUserAgentString().replace("; wv", "").replace(" Version/4.0", ""));
+        CookieManager cm = CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        cm.setAcceptThirdPartyCookies(w, true);
+    }
+
+    private WebViewClient client() {
+        return new WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(WebView v, android.webkit.WebResourceRequest r) {
+                String sch = r.getUrl().getScheme();
+                if ("http".equals(sch) || "https".equals(sch) || "blob".equals(sch) || "data".equals(sch) || "about".equals(sch)) return false;
+                try { startActivity(new Intent(Intent.ACTION_VIEW, r.getUrl())); } catch (Throwable t) { /* ignore */ }
+                return true;
+            }
+        };
+    }
+
+    private void closePopup(WebView p) {
+        popups.remove(p);
+        try { holder.removeView(p); } catch (Throwable t) { /* ignore */ }
+        try { p.destroy(); } catch (Throwable t) { /* ignore */ }
+        CookieManager.getInstance().flush();
     }
 
     private TextView barBtn(String t, View.OnClickListener l) {
@@ -143,6 +178,7 @@ public class ClaudeActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
+        if (!popups.isEmpty()) { closePopup(popups.get(popups.size() - 1)); return; }
         if (web != null && web.canGoBack()) web.goBack(); else finish();
     }
 
