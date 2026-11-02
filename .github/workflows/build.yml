@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['VERSION', 'web/**', 'app/**', 'RELEASE_NOTES.txt', 'build.gradle', 'settings.gradle']
+    paths: ['VERSION', 'web/**', 'app/**', 'RELEASE_NOTES.txt', 'build.gradle', 'settings.gradle', 'gradle.properties', '.github/workflows/**']
 
 permissions:
   contents: write
