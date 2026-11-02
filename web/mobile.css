@@ -210,3 +210,12 @@ label.opt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accen
 .perm .ok{color:var(--success);font-weight:700}.perm .no{color:var(--danger);font-weight:700}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .mt{margin-top:10px}
+
+/* 即時字幕 */
+.sub-h{margin:14px 0 6px;font-size:14px;color:var(--text-2)}
+input[type=color]{width:100%;height:40px;padding:3px;border-radius:12px;border:1px solid var(--border);background:var(--card-solid,#fff)}
+input[type=range]{width:100%;accent-color:var(--accent,#a2613a)}
+.cap-prev{border-radius:14px;padding:12px;margin:6px 0 10px;text-align:center;background-image:linear-gradient(135deg,#6b7f9a,#c9a77c);min-height:76px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.cap-prev .po,.cap-prev .pt{padding:0 6px;border-radius:0}
+.bar{height:6px;border-radius:4px;background:var(--border-soft);overflow:hidden;margin:2px 0 8px}
+.bar>i{display:block;height:100%;width:0;background:var(--accent,#a2613a);transition:width .2s}

@@ -97,6 +97,18 @@ public class Bridge {
 
     @JavascriptInterface public boolean floatRunning() { return FloatService.running; }
 
+    /* ---------- 即時字幕（影片／通話／音檔） ---------- */
+    @JavascriptInterface public boolean canMic() { return act.hasMic(); }
+    @JavascriptInterface public void capStart(final String cfgJson) {
+        act.runOnUiThread(new Runnable() { @Override public void run() { act.startCaption(cfgJson); } });
+    }
+    @JavascriptInterface public void capStop() { CaptionService.stop(act); }
+    @JavascriptInterface public boolean capRunning() { return CaptionService.running; }
+    @JavascriptInterface public void capStyle(String json) { CaptionService.applyStyle(json); }
+    @JavascriptInterface public String capModels() { return Models.listJson(act); }
+    @JavascriptInterface public void capDownload(String code) { Models.download(act, code); }
+    @JavascriptInterface public void capDelete(String code) { Models.delete(act, code); }
+
     /* ---------- Claude 訂閱模式（內建瀏覽器） ---------- */
     @JavascriptInterface public void openClaude(final String url) {
         act.runOnUiThread(new Runnable() {

@@ -408,6 +408,93 @@ $('btnFlStart').addEventListener('click', function(){
 });
 $('btnFlStop').addEventListener('click', function(){ NAT.call('stopFloat'); FL.running = false; setFlState(); });
 
+/* ---------- 即時字幕（影片／通話／音檔） ---------- */
+var CAP = {running: false, models: [], dl: {}};
+var CAP_DEF = {code: 'en', source: 'media', engine: 'google', txt: '#ffffff', orig: '#ffd27f', bg: '#000000', bgA: 60, font: 'sans', size: 22, osize: 14, lines: 2, posY: '0.72', showOrig: true, bold: true, outline: true};
+function capPrefs(){ return Object.assign({}, CAP_DEF, lsGet('ait.cap', {})); }
+function capReadUi(){
+  return {code: $('capLang').value, source: $('capSrc').value, engine: $('capEng').value, txt: $('capTxt').value, orig: $('capOrig').value, bg: $('capBg').value,
+    bgA: +$('capBgA').value, font: $('capFont').value, size: +$('capSize').value, osize: +$('capOSize').value, lines: +$('capLines').value, posY: $('capPos').value,
+    showOrig: $('capShowOrig').checked, bold: $('capBold').checked, outline: $('capOutline').checked};
+}
+function capStyleOf(p){
+  return {txt: p.txt, orig: p.orig, bg: p.bg, bgA: p.bgA / 100, font: p.font, size: p.size, osize: p.osize, lines: p.lines, posY: parseFloat(p.posY), showOrig: p.showOrig, bold: p.bold, outline: p.outline};
+}
+var CAP_FONT = {sans: 'sans-serif', serif: 'serif', mono: 'monospace', casual: '"Comic Sans MS","Chilanka",cursive', cursive: 'cursive'};
+function capPreview(){
+  var p = capReadUi(), box = $('capPrev'), a = Math.round(p.bgA * 2.55);
+  var rgb = p.bg.replace('#', ''), r = parseInt(rgb.slice(0, 2), 16), g = parseInt(rgb.slice(2, 4), 16), b = parseInt(rgb.slice(4, 6), 16);
+  var sh = p.outline ? '0 0 3px #000,0 0 3px #000' : 'none';
+  var po = $('capPrevO'), pt = $('capPrevT');
+  [po, pt].forEach(function(e){ e.style.background = 'rgba(' + r + ',' + g + ',' + b + ',' + (p.bgA / 100) + ')'; e.style.fontFamily = CAP_FONT[p.font] || 'sans-serif'; e.style.textShadow = sh; });
+  po.style.color = p.orig; po.style.fontSize = p.osize + 'px'; po.style.display = p.showOrig ? '' : 'none'; po.style.fontWeight = '400';
+  pt.style.color = p.txt; pt.style.fontSize = p.size + 'px'; pt.style.fontWeight = p.bold ? '700' : '400';
+  $('capBgAv').textContent = p.bgA + '%'; $('capSizeV').textContent = p.size; $('capOSizeV').textContent = p.osize;
+}
+function capSave(){
+  var p = capReadUi(); lsSet('ait.cap', p); capPreview();
+  if(CAP.running && NAT.has('capStyle')) NAT.call('capStyle', JSON.stringify(capStyleOf(p)));
+}
+function capLoadModels(){
+  try{ CAP.models = JSON.parse(NAT.call('capModels') || '[]'); }catch(e){ CAP.models = []; }
+  var sel = $('capLang'), cur = sel.value || capPrefs().code;
+  sel.textContent = '';
+  CAP.models.forEach(function(m){ sel.appendChild(h('option', {value: m.code}, m.name + (m.ready ? '　✓已下載' : '　（約 ' + m.mb + ' MB）'))); });
+  sel.value = cur; if(sel.value !== cur && CAP.models.length) sel.value = CAP.models[0].code;
+  capModelUi();
+}
+function capModelUi(){
+  var m = CAP.models.filter(function(x){ return x.code === $('capLang').value; })[0]; if(!m) return;
+  var d = CAP.dl[m.code];
+  $('capModelTx').textContent = d && d.st === 'download' ? '下載語音模型中… ' + d.pct + '%' : d && d.st === 'unzip' ? '解壓縮中…' : d && d.st === 'error' ? '下載失敗：' + d.msg : m.ready ? '語音模型：已下載（離線可用）' : '語音模型：尚未下載（約 ' + m.mb + ' MB）';
+  var busy = d && (d.st === 'download' || d.st === 'unzip');
+  $('btnCapDl').style.display = !m.ready && !busy ? '' : 'none';
+  $('btnCapDel').style.display = m.ready ? '' : 'none';
+  $('capBarWrap').style.display = busy ? '' : 'none';
+  $('capBar').style.width = (d && d.pct ? d.pct : 0) + '%';
+}
+function setCapState(txt){
+  $('capDot').classList.toggle('on', CAP.running);
+  $('capState').textContent = txt || (CAP.running ? '執行中：切到影片／音檔 App 開始播放' : '尚未啟動');
+  $('btnCapStart').disabled = CAP.running; $('btnCapStop').disabled = !CAP.running;
+}
+function refreshCap(){
+  var native = isApp && NAT.has('capStart');
+  $('capNative').style.display = native ? '' : 'none';
+  $('capWebOnly').classList.toggle('hide', native);
+  if(!native) return;
+  var p = capPrefs();
+  $('capSrc').value = p.source; $('capEng').value = p.engine; $('capTxt').value = p.txt; $('capOrig').value = p.orig; $('capBg').value = p.bg; $('capBgA').value = p.bgA;
+  $('capFont').value = p.font; $('capSize').value = p.size; $('capOSize').value = p.osize; $('capLines').value = p.lines; $('capPos').value = p.posY;
+  $('capShowOrig').checked = p.showOrig; $('capBold').checked = p.bold; $('capOutline').checked = p.outline;
+  $('capLang').value = p.code;
+  capLoadModels(); capPreview();
+  CAP.running = !!NAT.call('capRunning'); setCapState();
+}
+if(isApp && NAT.has('capStart')){
+  ['capLang', 'capSrc', 'capEng', 'capTxt', 'capOrig', 'capBg', 'capBgA', 'capFont', 'capSize', 'capOSize', 'capLines', 'capPos', 'capShowOrig', 'capBold', 'capOutline'].forEach(function(id){
+    $(id).addEventListener(id === 'capBgA' || id === 'capSize' || id === 'capOSize' || /^cap(Txt|Orig|Bg)$/.test(id) ? 'input' : 'change', capSave);
+  });
+  $('capLang').addEventListener('change', capModelUi);
+  $('btnCapDl').addEventListener('click', function(){ var c = $('capLang').value; CAP.dl[c] = {st: 'download', pct: 0}; capModelUi(); NAT.call('capDownload', c); });
+  $('btnCapDel').addEventListener('click', function(){ NAT.call('capDelete', $('capLang').value); });
+  $('btnCapReset').addEventListener('click', function(){ var keep = capPrefs(); lsSet('ait.cap', Object.assign({}, CAP_DEF, {code: keep.code, source: keep.source, engine: keep.engine})); refreshCap(); capSave(); });
+  $('btnCapStart').addEventListener('click', function(){
+    capSave();
+    var p = capPrefs(), m = CAP.models.filter(function(x){ return x.code === p.code; })[0];
+    if(!m || !m.ready){ toast('請先下載這個語言的語音模型', true); return; }
+    if(p.engine === 'claude' && !CFG.anthropicKey){ toast('選了 Claude 翻譯，請先到「設定」填入 API 金鑰', true); return; }
+    if(!NAT.call('canOverlay')){ toast('請先允許「顯示在其他應用程式上層」', true); NAT.call('askOverlay'); return; }
+    var cfg = {code: p.code, src: m.g, srcName: m.name, tgt: tgtSel.value, tgtName: langName(tgtSel.value), source: p.source, engine: p.engine,
+      gKey: CFG.gKey, aKey: CFG.anthropicKey, model: CFG.model, style: capStyleOf(p)};
+    NAT.call('capStart', JSON.stringify(cfg));
+    setCapState(p.source === 'media' ? '正在啟動…請允許錄音，並在系統視窗按「立即開始」' : '正在啟動…請允許錄音');
+  });
+  $('btnCapStop').addEventListener('click', function(){ NAT.call('capStop'); CAP.running = false; setCapState(); });
+}
+var _refreshFloat = refreshFloat;
+refreshFloat = function(){ _refreshFloat(); if(isApp && NAT.has('capStart')) refreshCap(); };
+
 /* ---------- 原生事件入口 ---------- */
 window.onNativeEvent = function(type, data){
   try{
@@ -420,6 +507,19 @@ window.onNativeEvent = function(type, data){
       else if(d.state === 'error'){ FL.running = false; setFlState(); toast('懸浮翻譯錯誤：' + (d.msg || ''), true); }
     }
     else if(type === 'perm') refreshFloat();
+    else if(type === 'cap'){
+      var cd = typeof data === 'string' ? JSON.parse(data) : data;
+      if(cd.state === 'model'){
+        CAP.dl[cd.code] = {st: cd.st, pct: cd.pct, msg: cd.msg};
+        if(cd.st === 'ready' || cd.st === 'deleted' || cd.st === 'error'){ if(cd.st === 'ready') toast('✓ 語音模型下載完成'); if(cd.st === 'error') toast('語音模型下載失敗：' + cd.msg, true); capLoadModels(); }
+        else capModelUi();
+      }
+      else if(cd.state === 'started'){ CAP.running = true; setCapState(); }
+      else if(cd.state === 'stopped'){ CAP.running = false; setCapState(); }
+      else if(cd.state === 'denied'){ CAP.running = false; setCapState('螢幕錄製權限被拒絕'); toast('擷取手機播放的聲音需要允許螢幕錄製；也可改選「麥克風」', true); }
+      else if(cd.state === 'nomic'){ CAP.running = false; setCapState('沒有錄音權限'); toast('需要允許錄音權限才能辨識聲音', true); }
+      else if(cd.state === 'error'){ CAP.running = false; setCapState(); toast('即時字幕錯誤：' + (cd.msg || ''), true); }
+    }
     else if(type === 'ceng'){
       var c = typeof data === 'string' ? JSON.parse(data) : data;
       if(c.state){ CE.state = c.state; updateEnginePill(); }

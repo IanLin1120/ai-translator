@@ -24,11 +24,12 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     static MainActivity cur;
-    static final int REQ_FILE = 1001, REQ_PROJ = 1002, REQ_NOTIF = 1003;
+    static final int REQ_FILE = 1001, REQ_PROJ = 1002, REQ_NOTIF = 1003, REQ_MIC = 1004, REQ_PROJ_CAP = 1005;
 
     WebView web;
     private ValueCallback<Uri[]> fileCb;
     String pendingCfg;
+    String pendingCap;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -109,6 +110,31 @@ public class MainActivity extends Activity {
         startActivityForResult(m.createScreenCaptureIntent(), REQ_PROJ);
     }
 
+    boolean hasMic() {
+        return Build.VERSION.SDK_INT < 23 || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** 即時字幕：先要錄音權限；擷取手機播放的聲音還要螢幕錄製（含系統聲音）授權。 */
+    void startCaption(String cfgJson) {
+        pendingCap = cfgJson;
+        if (!hasMic()) { requestPermissions(new String[] {Manifest.permission.RECORD_AUDIO}, REQ_MIC); return; }
+        continueCaption();
+    }
+
+    private void continueCaption() {
+        String cfg = pendingCap;
+        if (cfg == null) return;
+        boolean media = true;
+        try { media = !"mic".equals(new JSONObject(cfg).optString("source", "media")); } catch (Throwable t) { /* ignore */ }
+        if (media) {
+            MediaProjectionManager m = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            startActivityForResult(m.createScreenCaptureIntent(), REQ_PROJ_CAP);
+        } else {
+            pendingCap = null;
+            CaptionService.start(this, 0, null, cfg);
+        }
+    }
+
     void askNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
     }
@@ -125,6 +151,10 @@ public class MainActivity extends Activity {
                 fileCb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
                 fileCb = null;
             }
+        } else if (req == REQ_PROJ_CAP) {
+            if (res == RESULT_OK && data != null && pendingCap != null) CaptionService.start(this, res, data, pendingCap);
+            else emit("cap", "{\"state\":\"denied\"}");
+            pendingCap = null;
         } else if (req == REQ_PROJ) {
             if (res == RESULT_OK && data != null && pendingCfg != null) {
                 FloatService.start(this, res, data, pendingCfg);
@@ -138,6 +168,11 @@ public class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
         super.onRequestPermissionsResult(req, perms, results);
         if (req == REQ_NOTIF) emit("perm", "");
+        if (req == REQ_MIC) {
+            if (results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) continueCaption();
+            else { pendingCap = null; emit("cap", "{\"state\":\"nomic\"}"); }
+            emit("perm", "");
+        }
     }
 
     @Override protected void onResume() {

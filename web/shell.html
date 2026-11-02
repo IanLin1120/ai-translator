@@ -178,6 +178,65 @@
     <div id="flWebOnly" class="note err hide">懸浮即時翻譯需要安裝 APK 版 App（網頁沒有權限在其他 App 上方顯示）。</div>
   </div>
 
+  <div class="card glass" id="cardCap">
+    <h3>🎧 即時字幕（影片／通話／音檔）</h3>
+    <p class="desc">聽到外文就即時翻成懸浮字幕，浮在影片、視訊或語音通話、音檔播放的畫面上方。字幕的顏色、大小、字體都能自訂。</p>
+    <div id="capNative">
+      <div class="two">
+        <div class="field"><label class="lbl">聽到的語言</label><select id="capLang"></select></div>
+        <div class="field"><label class="lbl">聲音來源</label>
+          <select id="capSrc">
+            <option value="media">手機播放的聲音</option>
+            <option value="mic">麥克風／通話擴音</option>
+          </select></div>
+      </div>
+      <div class="perm"><span id="capModelTx">語音模型：—</span><span class="grow"></span><button class="btn sm" id="btnCapDl">下載</button><button class="btn sm" id="btnCapDel" style="display:none">刪除</button></div>
+      <div class="bar" id="capBarWrap" style="display:none"><i id="capBar"></i></div>
+      <div class="field"><label class="lbl">翻譯引擎</label>
+        <select id="capEng">
+          <option value="google">Google 翻譯（免費）</option>
+          <option value="claude">Claude 翻譯（需金鑰、依用量計費）</option>
+        </select></div>
+
+      <h4 class="sub-h">字幕樣式</h4>
+      <div class="cap-prev" id="capPrev"><div class="po" id="capPrevO">Hello, how are you today?</div><div class="pt" id="capPrevT">你好，你今天好嗎？</div></div>
+      <div class="two">
+        <div class="field"><label class="lbl">譯文顏色</label><input type="color" id="capTxt"></div>
+        <div class="field"><label class="lbl">原文顏色</label><input type="color" id="capOrig"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label class="lbl">背景顏色</label><input type="color" id="capBg"></div>
+        <div class="field"><label class="lbl">字體</label>
+          <select id="capFont">
+            <option value="sans">黑體（預設）</option>
+            <option value="serif">明體／襯線</option>
+            <option value="mono">等寬</option>
+            <option value="casual">圓潤</option>
+            <option value="cursive">手寫</option>
+          </select></div>
+      </div>
+      <div class="field"><label class="lbl">背景透明度 <b id="capBgAv"></b></label><input type="range" id="capBgA" min="0" max="100" step="5"></div>
+      <div class="field"><label class="lbl">譯文大小 <b id="capSizeV"></b></label><input type="range" id="capSize" min="12" max="48" step="1"></div>
+      <div class="field"><label class="lbl">原文大小 <b id="capOSizeV"></b></label><input type="range" id="capOSize" min="9" max="32" step="1"></div>
+      <div class="two">
+        <div class="field"><label class="lbl">同時顯示幾句</label><select id="capLines"><option value="1">1 句</option><option value="2">2 句</option><option value="3">3 句</option></select></div>
+        <div class="field"><label class="lbl">字幕位置</label><select id="capPos"><option value="0.08">畫面上方</option><option value="0.4">畫面中間</option><option value="0.72">畫面下方</option><option value="0.85">最下面</option></select></div>
+      </div>
+      <label class="chk-line"><input type="checkbox" id="capShowOrig"> 顯示原文</label>
+      <label class="chk-line"><input type="checkbox" id="capBold"> 粗體</label>
+      <label class="chk-line"><input type="checkbox" id="capOutline"> 文字外框陰影（深淺背景都清楚）</label>
+      <div class="btn-row"><button class="secondary" id="btnCapReset">還原預設樣式</button></div>
+
+      <div class="fl-state"><span class="fl-dot" id="capDot"></span><span id="capState">尚未啟動</span></div>
+      <div class="btn-row">
+        <button class="primary" id="btnCapStart">▶ 啟動即時字幕</button>
+        <button class="secondary" id="btnCapStop" disabled>■ 停止</button>
+      </div>
+      <div class="note steps">使用方式：① 先選「聽到的語言」並下載語音模型（只要下載一次，之後離線辨識）　② 按「啟動」，允許錄音與螢幕錄製（要擷取手機播放的聲音才需要）　③ 切到影片／音檔 App 開始播放，字幕就會浮出來　④ 點字幕可顯示調整按鈕，拖曳可移動位置。<br>限制：• 視訊／語音通話（LINE、Zoom、Meet、電話等）的對方聲音，系統不允許擷取，請改選「麥克風」並開擴音　• 部分串流 App 禁止擷取聲音，會 15 秒沒收到聲音並提示　• 離線小模型的辨識準確度不如雲端，口音重、背景音樂大時會有錯字　• 擷取手機播放的聲音需要 Android 10 以上。</div>
+    </div>
+    <div id="capWebOnly" class="note err hide">即時字幕需要安裝 APK 版 App。</div>
+  </div>
+
   <div class="card glass">
     <h3>🖼 截圖翻譯（單次）</h3>
     <p class="desc">上傳一張截圖，框選要翻譯的地方後翻譯一次。</p>
