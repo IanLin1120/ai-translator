@@ -161,6 +161,58 @@ imagesNotAvailable = function(){
   if(!isApp) openSettings();
 };
 
+/* ---------- Claude 訂閱引擎（背景網頁版翻譯器 → 用月訂閱額度，結果直接顯示在這個介面） ---------- */
+var CE = {state: 'none', wait: {}};
+function subSupported(){ return isApp && NAT.has('cengReq'); }
+function subOn(){ return subSupported() && engineSel.value === 'sub'; }
+function claudeUrl(){ return lsGet('ait.claudeUrl', '') || DEFAULT_CLAUDE_URL; }
+if(subSupported()){
+  $('optSub').hidden = false; $('optSub').disabled = false;
+  var savedEng = lsGet('ait.engine', ''); if(savedEng === 'sub' || savedEng === 'google') engineSel.value = savedEng;
+  engineSel.addEventListener('change', function(){
+    lsSet('ait.engine', engineSel.value);
+    if(engineSel.value === 'sub') NAT.call('cengStart', claudeUrl());
+  });
+  if(engineSel.value === 'sub') NAT.call('cengStart', claudeUrl());
+}else{ var _o = $('optSub'); if(_o) _o.remove(); }
+function ceState(){ return String(NAT.call('cengState') || CE.state || 'none'); }
+function ceFailText(st){
+  if(st === 'login') return '尚未登入 claude.ai：請到「設定」→「Claude 訂閱模式」按「登入 claude.ai」（用 Email 登入），再回來重試。';
+  if(st === 'noaccess') return 'Claude 網頁版翻譯器沒有取得翻譯權限：請到「設定」按「開啟 Claude 訂閱版翻譯」，在那個頁面翻譯一次並按「允許」，之後這裡就能用。';
+  return null;
+}
+var _aiAvailable = aiAvailable, _callAIJson = callAIJson, _updateEnginePill = updateEnginePill;
+aiAvailable = function(){ return subOn() ? true : _aiAvailable(); };
+var _aiImagesAvailable2 = aiImagesAvailable;
+aiImagesAvailable = function(){ return subOn() ? true : _aiImagesAvailable2(); };
+callAIJson = async function(prompt, imgs){
+  if(!subOn()) return _callAIJson(prompt, imgs);
+  NAT.call('cengStart', claudeUrl());
+  var t0 = Date.now(), st;
+  while(true){                                     /* 等背景網頁版翻譯器就緒（最多 40 秒） */
+    st = ceState();
+    var bad = ceFailText(st); if(bad) throw new Error(bad);
+    if(st === 'ready') break;
+    if(Date.now() - t0 > 40000) throw new Error('Claude 網頁版翻譯器沒有回應（可能尚未登入或網路不穩）。可到「設定」開啟 Claude 訂閱版翻譯確認，或改用 Google 翻譯。');
+    await sleep(500);
+  }
+  var id = 'c' + Date.now() + Math.random().toString(36).slice(2, 6);
+  var req = {prompt: prompt, images: (imgs || []).map(function(x){ return {mime: x.mime, b64: x.b64}; })};
+  return new Promise(function(res, rej){
+    CE.wait[id] = {res: res, rej: rej};
+    NAT.call('cengReq', id, JSON.stringify(req));
+    setTimeout(function(){ if(CE.wait[id]){ delete CE.wait[id]; rej(new Error('Claude 訂閱翻譯逾時，請重試。')); } }, 120000);
+  });
+};
+updateEnginePill = function(){
+  _updateEnginePill();
+  if(!subOn()) return;
+  var st = ceState(), ready = st === 'ready';
+  enginePill.textContent = ready ? 'Claude 訂閱引擎已就緒' : st === 'login' ? '需要登入 claude.ai' : st === 'noaccess' ? '需要授權網頁版翻譯器' : '連線 Claude 中…';
+  enginePill.className = 'status-pill ' + (ready ? 'ok' : (st === 'login' || st === 'noaccess') ? 'bad' : '');
+};
+engineSel.addEventListener('change', function(){ updateEnginePill(); });
+
 /* ---------- 版本與更新（GitHub：IanLin1120/ai-translator） ---------- */
 var Upd = {
   gt: function(a, b){ var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for(var i = 0; i < Math.max(x.length, y.length); i++){ var p = x[i] || 0, q = y[i] || 0; if(p !== q) return p > q; } return false; },
@@ -368,6 +420,15 @@ window.onNativeEvent = function(type, data){
       else if(d.state === 'error'){ FL.running = false; setFlState(); toast('懸浮翻譯錯誤：' + (d.msg || ''), true); }
     }
     else if(type === 'perm') refreshFloat();
+    else if(type === 'ceng'){
+      var c = typeof data === 'string' ? JSON.parse(data) : data;
+      if(c.state){ CE.state = c.state; updateEnginePill(); }
+      else if(c.id && CE.wait[c.id]){
+        var w2 = CE.wait[c.id]; delete CE.wait[c.id];
+        if(c.ok){ try{ w2.res(JSON.parse(c.text)); }catch(e){ try{ w2.res(parseJsonLoose(c.text)); }catch(e2){ w2.rej(new Error('Claude 回傳格式無法解析')); } } }
+        else w2.rej(new Error(c.text || 'Claude 訂閱翻譯失敗'));
+      }
+    }
     else if(type === 'ocr'){
       var o = typeof data === 'string' ? JSON.parse(data) : data, w = ocrWait[o.id];
       if(w){ delete ocrWait[o.id]; if(o.ok) w.res(o.lines || []); else w.rej(new Error(o.err || '文字辨識失敗')); }

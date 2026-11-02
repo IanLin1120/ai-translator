@@ -108,6 +108,12 @@ public class Bridge {
         });
     }
 
+    /* ---------- Claude 訂閱引擎（背景網頁版翻譯器） ---------- */
+    @JavascriptInterface public void cengStart(String url) { ClaudeEngine.start(act, url); }
+    @JavascriptInterface public void cengStop() { ClaudeEngine.stop(act); }
+    @JavascriptInterface public String cengState() { return ClaudeEngine.state(); }
+    @JavascriptInterface public void cengReq(String id, String json) { ClaudeEngine.request(id, json); }
+
     /* ---------- 裝置端文字辨識（圖片／截圖） ---------- */
     @JavascriptInterface public boolean hasOcr() { return true; }
 

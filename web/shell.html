@@ -17,6 +17,7 @@
       <select id="engineSel">
         <option value="ai">AI 翻譯（Claude）</option>
         <option value="google">Google 翻譯（免費）</option>
+        <option value="sub" id="optSub" hidden>Claude 訂閱（月訂閱額度）</option>
       </select>
       <div class="status-pill" id="engineStatus">檢查中…</div>
     </div>
@@ -262,6 +263,7 @@
     <div class="field"><label class="lbl">網頁版翻譯器網址</label>
       <input type="url" id="claudeUrl" placeholder="https://claude.ai/artifact/…" autocomplete="off"></div>
     <div class="btn-row"><button class="primary" id="btnOpenClaude">☁ 開啟 Claude 訂閱版翻譯</button><button class="secondary" id="btnOpenClaudeLogin">登入 claude.ai</button></div>
+    <div class="note">在「翻譯」頁的翻譯引擎選「Claude 訂閱（月訂閱額度）」，翻譯會在背景透過這個網頁版進行、結果直接顯示在 App 介面裡。第一次請先登入 claude.ai，並按上面「開啟 Claude 訂閱版翻譯」翻譯一次、按「允許」。</div>
     <div class="note">登入請用 Email 驗證碼或連結（Google 登入在內建瀏覽器會被擋）。此模式為網頁版功能：文字、圖片、Excel、Word、PDF、郵件都能翻；螢幕懸浮即時翻譯只在本機模式提供。</div>
   </div>
 

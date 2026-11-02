@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
-        if (cur == this) cur = null;
+        if (cur == this) { cur = null; ClaudeEngine.stop(this); }
         super.onDestroy();
     }
 }

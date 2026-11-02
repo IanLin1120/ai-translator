@@ -1,1 +1,1 @@
-{"app": "1.0.1", "apk": 10001, "apkName": "1.0.1", "minApk": "1.0.1", "notes": "修正 Claude 訂閱模式用 Google 帳號登入後卡在空白畫面（支援彈出式視窗）"}
+{"app": "1.0.1", "apk": 10001, "apkName": "1.0.1", "minApk": "1.1.0", "notes": "修正 Claude 訂閱模式用 Google 帳號登入後卡在空白畫面（支援彈出式視窗）"}
