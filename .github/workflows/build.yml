@@ -1,0 +1,90 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['VERSION', 'web/**', 'app/**', 'RELEASE_NOTES.txt', 'build.gradle', 'settings.gradle']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: 組合網頁介面
+        run: |
+          python3 web/build.py
+          mkdir -p app/src/main/assets
+          cp web/dist/index.html app/src/main/assets/index.html
+
+      - name: 還原簽章金鑰
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KS_B64" ]; then echo "::error::缺少 KEYSTORE_B64 secret（簽章金鑰），請照 README 設定"; exit 1; fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: 建置並簽章 APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: 發布到 GitHub Pages 內容
+        run: |
+          VER=$(cat VERSION | tr -d '[:space:]')
+          SRC=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          NAME="AI全能翻譯_v${VER}.apk"
+          mkdir -p apk
+          cp "$SRC" "apk/$NAME"
+          cp web/dist/index.html index.html
+          python3 - "$VER" "$NAME" <<'PY'
+          import json, sys, os, datetime
+          ver, name = sys.argv[1], sys.argv[2]
+          size = os.path.getsize('apk/' + name)
+          notes = open('RELEASE_NOTES.txt', encoding='utf-8').read().strip()
+          p, a, c = (int(x) for x in ver.split('.'))
+          code = p * 10000 + a * 100 + c
+          try: L = json.load(open('apks.json', encoding='utf-8'))
+          except Exception: L = []
+          L = [x for x in L if x.get('v') != ver]
+          L.insert(0, {'v': ver, 'file': name, 'date': datetime.date.today().isoformat(), 'size': size, 'notes': notes})
+          L.sort(key=lambda x: [int(n) for n in x['v'].split('.')], reverse=True)
+          json.dump(L, open('apks.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+          try: old = json.load(open('version.json', encoding='utf-8'))
+          except Exception: old = {}
+          json.dump({'app': ver, 'apk': code, 'apkName': ver, 'minApk': os.environ.get('MIN_APK') or old.get('minApk', ver),
+                     'notes': notes.replace('\n', '；')}, open('version.json', 'w', encoding='utf-8'), ensure_ascii=False)
+          PY
+
+      - name: 提交結果
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add apk apks.json version.json index.html
+          git commit -m "release: v$(cat VERSION | tr -d '[:space:]') [skip ci]" || echo "沒有變更"
+          git push
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: apk/*.apk

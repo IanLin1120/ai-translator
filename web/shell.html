@@ -1,0 +1,312 @@
+<body>
+<div id="setModal" class="hide"></div>
+<!-- 共用頂部（標題＋語言列），切換頁面時搬到該頁最上方 -->
+<div id="topShared">
+  <div class="head">
+    <span class="logo">譯</span>
+    <div class="grow"><h1>AI 全能翻譯</h1><p>文字・檔案・圖片・螢幕　一站翻譯</p></div>
+    <button class="btn sm" id="btnSettings" title="設定" style="display:none">⚙</button>
+  </div>
+  <div class="card glass lang-card" id="langCard">
+    <div class="lang-row">
+      <div class="grp"><label>原文語言</label><select id="srcLang"></select></div>
+      <button class="swap-btn" id="swapLang" title="交換語言">⇄</button>
+      <div class="grp"><label>翻譯成</label><select id="tgtLang"></select></div>
+    </div>
+    <div class="eng-row">
+      <select id="engineSel">
+        <option value="ai">AI 翻譯（Claude）</option>
+        <option value="google">Google 翻譯（免費）</option>
+      </select>
+      <div class="status-pill" id="engineStatus">檢查中…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 翻譯（文字） ========== -->
+<div class="view on" id="v-trans"><div class="scroll"><div class="page" id="p-trans">
+  <div class="card glass">
+    <h3>📝 文字翻譯</h3>
+    <textarea id="textIn" placeholder="在這裡輸入或貼上要翻譯的文字…"></textarea>
+    <div class="btn-row">
+      <button class="primary" id="btnTransText">開始翻譯</button>
+      <button class="secondary" id="btnPasteText">貼上</button>
+      <button class="secondary" id="btnClearText">清除</button>
+    </div>
+    <div class="progress-wrap" id="pwText"><div class="progress-bar"><div id="pbText"></div></div><div class="progress-label" id="plText"></div></div>
+  </div>
+  <div class="card glass">
+    <h3>✅ 翻譯結果</h3>
+    <textarea id="textOut" placeholder="翻譯結果會顯示在這裡…" readonly></textarea>
+    <div class="btn-row">
+      <button class="secondary" id="btnCopyText">複製譯文</button>
+      <button class="secondary" id="btnCopyBoth">複製雙語對照</button>
+      <button class="secondary" id="btnDlText">匯出 .txt…</button>
+    </div>
+  </div>
+</div></div></div>
+
+<!-- ========== 檔案 ========== -->
+<div class="view" id="v-files"><div class="scroll"><div class="page" id="p-files">
+  <div class="seg" id="fileSeg">
+    <button class="btn on" data-f="image">🖼 圖片</button>
+    <button class="btn" data-f="excel">📊 Excel</button>
+    <button class="btn" data-f="word">📄 Word</button>
+    <button class="btn" data-f="pdf">📕 PDF</button>
+    <button class="btn" data-f="mail">✉ 郵件</button>
+  </div>
+<div class="card glass fpanel" data-f="image">
+    <h3>圖片翻譯（OCR + AI 翻譯）</h3>
+    <p class="desc">上傳圖片，AI 會辨識圖中的文字並翻譯。輸出為原文／譯文對照清單。</p>
+    <div class="dropzone" id="dzImage">
+      <div class="big">點一下選擇圖片</div>
+      <div class="small">支援 JPG / PNG / WEBP</div>
+      <input type="file" id="fileImage" accept="image/*" style="display:none">
+    </div>
+    <div id="imagePreviewWrap"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransImage" disabled>辨識並翻譯</button>
+      <button class="secondary" id="btnDlImage" disabled>匯出 .txt（可選雙語對照）…</button>
+    </div>
+    <div class="progress-wrap" id="pwImage"><div class="progress-bar"><div id="pbImage"></div></div><div class="progress-label" id="plImage"></div></div>
+    <div class="result-box result-list" id="resImage" style="display:none;"></div>
+  </div>
+
+<div class="card glass fpanel" data-f="excel">
+    <h3>Excel 翻譯</h3>
+    <p class="desc">保留原始活頁簿結構、公式與儲存格配置，僅翻譯文字內容。輸出檔名會加上語言後綴，例如「客戶資料-中文.xlsx」。</p>
+    <div class="dropzone" id="dzExcel">
+      <div class="big">點一下選擇 Excel 檔（.xlsx / .xls / .csv）</div>
+      <div class="small">支援多工作表</div>
+      <input type="file" id="fileExcel" accept=".xlsx,.xls,.csv" style="display:none">
+    </div>
+    <div id="excelChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransExcel" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlExcel" disabled>匯出（可自訂檔名）…</button>
+    </div>
+    <div class="progress-wrap" id="pwExcel"><div class="progress-bar"><div id="pbExcel"></div></div><div class="progress-label" id="plExcel"></div></div>
+    <div class="note">複雜的儲存格樣式（自訂色彩、條件式格式）在少數情況下可能無法完整保留，一般文字格式、欄寬與公式不受影響。</div>
+  </div>
+
+<div class="card glass fpanel" data-f="word">
+    <h3>Word 翻譯</h3>
+    <p class="desc">保留段落、標題、粗體 / 斜體 / 底線、清單與表格結構，翻譯內文文字，輸出為新的 .docx。</p>
+    <div class="dropzone" id="dzWord">
+      <div class="big">點一下選擇 Word 檔（.docx）</div>
+      <div class="small">舊版 .doc 請先於 Word 另存為 .docx</div>
+      <input type="file" id="fileWord" accept=".docx" style="display:none">
+    </div>
+    <div id="wordChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransWord" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlWord" disabled>匯出（可自訂檔名）…</button>
+    </div>
+    <div class="progress-wrap" id="pwWord"><div class="progress-bar"><div id="pbWord"></div></div><div class="progress-label" id="plWord"></div></div>
+    <div class="note">圖片、頁首頁尾與複雜版面（分欄、文字方塊）目前不會複製到輸出檔案中，僅保留主要內文格式。</div>
+  </div>
+
+<div class="card glass fpanel" data-f="pdf">
+    <h3>PDF 翻譯</h3>
+    <p class="desc">保留每一頁的原始版面（文字位置與頁面外觀），將翻譯結果疊加在對應位置，輸出為可離線開啟的 HTML 檔案。</p>
+    <div class="dropzone" id="dzPdf">
+      <div class="big">點一下選擇 PDF 檔</div>
+      <div class="small">掃描檔（純圖片 PDF）辨識效果有限</div>
+      <input type="file" id="filePdf" accept=".pdf" style="display:none">
+    </div>
+    <div id="pdfChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransPdf" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlPdf" disabled>匯出（可自訂檔名）…</button>
+    </div>
+    <div class="progress-wrap" id="pwPdf"><div class="progress-bar"><div id="pbPdf"></div></div><div class="progress-label" id="plPdf"></div></div>
+    <div class="note">因瀏覽器產生的 PDF 缺乏完整中日韓字型，本工具會輸出「版面一致的 HTML 複本」；若需要 .pdf 檔，開啟後用瀏覽器的「列印 → 另存為 PDF」即可轉存，版面會與原始 PDF 一致。</div>
+  </div>
+
+<div class="card glass fpanel" data-f="mail">
+    <h3>Outlook 郵件翻譯</h3>
+    <p class="desc">翻譯郵件主旨與內文，保留郵件標頭資訊（寄件者、收件者、時間）。</p>
+    <div class="dropzone" id="dzMail">
+      <div class="big">點一下選擇郵件檔（.eml）</div>
+      <div class="small">.msg 請先在 Outlook 另存為 .eml</div>
+      <input type="file" id="fileMail" accept=".eml,.msg,.txt" style="display:none">
+    </div>
+    <div id="mailChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransMail" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlMail" disabled>匯出（可選格式與雙語對照）…</button>
+    </div>
+    <div class="progress-wrap" id="pwMail"><div class="progress-bar"><div id="pbMail"></div></div><div class="progress-label" id="plMail"></div></div>
+    <div class="result-box" id="resMail" style="display:none;"></div>
+    <div class="note">.msg 為 Outlook 專屬二進位格式，瀏覽器無法直接解析；本工具僅能嘗試擷取其中可讀文字，建議改用 .eml 以確保完整正確。</div>
+  </div>
+</div></div></div>
+
+<!-- ========== 螢幕 ========== -->
+<div class="view" id="v-screen"><div class="scroll"><div class="page" id="p-screen">
+  <div class="card glass" id="cardFloat">
+    <h3>🪟 懸浮即時翻譯</h3>
+    <p class="desc">在任何 App 上方浮出翻譯小視窗：框選要翻譯的區域，畫面一有變化就自動重新辨識與翻譯（看影片字幕、玩外文遊戲、讀外文網頁都能用）。</p>
+    <div id="flNative">
+      <div class="perm"><span>顯示在其他應用程式上層</span><span class="grow"></span><span id="permOverlay" class="no">未允許</span><button class="btn sm" id="btnAskOverlay">允許</button></div>
+      <div class="perm"><span>通知（前景服務需要）</span><span class="grow"></span><span id="permNotif" class="no">未允許</span><button class="btn sm" id="btnAskNotif">允許</button></div>
+      <div class="field mt"><label class="lbl">文字辨識方式</label>
+        <select id="flOcr">
+          <option value="mlkit">裝置端（免費、離線；中日韓、拉丁字母）</option>
+          <option value="claude">Claude 看圖（更準；需金鑰、依用量計費）</option>
+        </select></div>
+      <div class="field"><label class="lbl">翻譯引擎</label>
+        <select id="flEngine">
+          <option value="google">Google 翻譯（免費）</option>
+          <option value="claude">Claude 翻譯（需金鑰、依用量計費）</option>
+        </select></div>
+      <div class="two">
+        <div class="field"><label class="lbl">畫面變化靈敏度</label>
+          <select id="flSens"><option value="high">高</option><option value="mid" selected>中</option><option value="low">低</option></select></div>
+        <div class="field"><label class="lbl">最短間隔</label>
+          <select id="flGap"><option value="1500">1.5 秒</option><option value="2500" selected>2.5 秒</option><option value="4000">4 秒</option></select></div>
+      </div>
+      <label class="chk-line"><input type="checkbox" id="flShowOrig" checked> 懸浮視窗顯示原文</label>
+      <div class="fl-state"><span class="fl-dot" id="flDot"></span><span id="flState">尚未啟動</span></div>
+      <div class="btn-row">
+        <button class="primary" id="btnFlStart">▶ 啟動懸浮翻譯</button>
+        <button class="secondary" id="btnFlStop" disabled>■ 停止</button>
+      </div>
+      <div class="note steps">使用方式：① 按「啟動」並在系統視窗按「立即開始」允許螢幕錄製　② 切到你要翻譯的 App，點懸浮的「譯」圓球　③ 在畫面上拖曳框選要翻譯的區域（框越小越準；影片字幕只框字幕那一條）　④ 翻譯小視窗會浮在上面，可拖曳移動、縮放字體、暫停。<br>小視窗不要蓋住所選區域；若不小心蓋住，程式會自動把被蓋住的部分塗掉，不會翻到自己的譯文。</div>
+    </div>
+    <div id="flWebOnly" class="note err hide">懸浮即時翻譯需要安裝 APK 版 App（網頁沒有權限在其他 App 上方顯示）。</div>
+  </div>
+
+  <div class="card glass">
+    <h3>🖼 截圖翻譯（單次）</h3>
+    <p class="desc">上傳一張截圖，框選要翻譯的地方後翻譯一次。</p>
+    <div class="btn-row">
+      <button class="primary" id="btnUploadShot">選擇截圖</button>
+      <input type="file" id="fileShot" accept="image/*" style="display:none">
+      <button class="secondary hide" id="btnCapture">開始擷取畫面</button>
+    </div>
+    <div id="captureErr" class="note err" style="display:none;"></div>
+    <div class="crop-stage" id="cropStage">
+      <video id="liveVideo" muted playsinline style="display:none;"></video>
+      <canvas id="cropCanvas" style="display:none;"></canvas>
+      <div class="crop-sel" id="cropSel"></div>
+    </div>
+    <div class="btn-row" id="screenActions" style="display:none;">
+      <button class="olive" id="btnTransSel">翻譯選取區域（未框選＝整張）</button>
+      <button class="primary hide" id="btnFloat">懸浮</button>
+      <button class="secondary hide" id="btnStopCap">停止</button>
+      <button class="secondary" id="btnDlScreen" disabled>匯出結果…</button>
+    </div>
+    <div class="live-opts hide" id="liveOpts">
+      <select id="liveSens"><option value="mid" selected>中</option></select>
+      <input type="checkbox" id="liveAuto" checked><input type="checkbox" id="liveShowOrig" checked>
+    </div>
+    <div class="progress-wrap" id="pwScreen"><div class="progress-bar"><div id="pbScreen"></div></div><div class="progress-label" id="plScreen"></div></div>
+    <div class="result-box result-list" id="resScreen" style="display:none;"></div>
+  </div>
+</div></div></div>
+
+<!-- ========== 設定 ========== -->
+<div class="view" id="v-set"><div class="scroll"><div class="page" id="p-set">
+  <h2 class="pt">⚙ 設定</h2>
+
+  <div class="card glass">
+    <h3>🔑 翻譯引擎與金鑰</h3>
+    <div id="rowAnthropic" class="field">
+      <label class="lbl">Anthropic API 金鑰（AI 翻譯、看圖辨識使用，依用量另外計費）</label>
+      <input type="password" id="setAnthropicKey" placeholder="sk-ant-..." autocomplete="off">
+      <div class="help">到 console.anthropic.com 申請。金鑰只存在這支手機，直接送到 Anthropic，不經過其他伺服器。<b>不填也能用：</b>Google 翻譯＋裝置端辨識完全免費。</div>
+      <label class="lbl" style="margin-top:10px;">AI 模型</label>
+      <select id="setModel">
+        <option value="claude-sonnet-5-5">Claude Sonnet 5.5（建議，速度與品質平衡）</option>
+        <option value="claude-haiku-5-5">Claude Haiku 5.5（較快、較省）</option>
+        <option value="claude-opus-5-5">Claude Opus 5.5（最準、較貴）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="lbl">Google Cloud Translation API 金鑰（選填，讓 Google 翻譯更穩定）</label>
+      <input type="password" id="setGKey" placeholder="AIza..." autocomplete="off">
+      <div class="help">免金鑰模式用的是 Google 沒有公開承諾的端點，偶爾會被限流。填入官方金鑰後改走正式 API（每月有免費額度，超過才計費；額度以官方價格頁為準）。</div>
+      <div class="gk-links">
+        <a href="https://console.cloud.google.com/projectcreate" data-ext>① 建立專案</a>
+        <a href="https://console.cloud.google.com/billing" data-ext>② 設定帳單</a>
+        <a href="https://console.cloud.google.com/apis/library/translate.googleapis.com" data-ext>③ 啟用 Translation API</a>
+        <a href="https://console.cloud.google.com/apis/credentials" data-ext>④ 建立 API 金鑰</a>
+        <a href="https://cloud.google.com/translate/pricing" data-ext>價格與免費額度</a>
+      </div>
+      <details class="gk-steps"><summary>申請步驟（點開）</summary>
+        <ol>
+          <li>點「① 建立專案」，用 Google 帳號登入，取名後建立。</li>
+          <li>點「② 設定帳單」，綁定付款方式（Google 要求必須有帳單帳戶才能啟用，但在免費額度內不會扣款）。</li>
+          <li>點「③ 啟用 Translation API」，按「啟用」。</li>
+          <li>點「④ 建立 API 金鑰」→「建立憑證」→「API 金鑰」，複製以 AIza 開頭的字串貼到上面欄位。</li>
+          <li>建議點金鑰的「編輯」→「API 限制」→ 只勾選 Cloud Translation API，避免金鑰被盜用到其他服務。</li>
+          <li>貼上後按「儲存」，並在上方引擎選「Google 翻譯」即可。</li>
+        </ol>
+      </details>
+    </div>
+    <div class="field"><label class="lbl">圖片／截圖的文字辨識</label>
+      <select id="setOcrMode">
+        <option value="auto">自動（有金鑰用 Claude，否則裝置端）</option>
+        <option value="mlkit">一律裝置端（免費、離線）</option>
+        <option value="claude">一律 Claude 看圖（需金鑰）</option>
+      </select></div>
+    <label class="chk-line"><input type="checkbox" id="setFallback"> Google 翻譯失敗的句子，自動改用 AI 補譯（需已設定金鑰）</label>
+    <label class="chk-line"><input type="checkbox" id="setRemember" checked> 在這支手機記住金鑰</label>
+    <div class="btn-row"><button class="primary" id="btnSetSave">儲存</button><button class="secondary" id="btnSetClose">返回</button></div>
+  </div>
+
+  <div class="card glass" id="cardClaude">
+    <h3>☁ Claude 訂閱模式</h3>
+    <p class="desc">用你的 Claude 月訂閱額度翻譯（不需要 API 金鑰、不另外計費）。App 會在內建瀏覽器開啟你發佈的網頁版翻譯器，請先登入 claude.ai。</p>
+    <div class="field"><label class="lbl">網頁版翻譯器網址</label>
+      <input type="url" id="claudeUrl" placeholder="https://claude.ai/artifact/…" autocomplete="off"></div>
+    <div class="btn-row"><button class="primary" id="btnOpenClaude">☁ 開啟 Claude 訂閱版翻譯</button><button class="secondary" id="btnOpenClaudeLogin">登入 claude.ai</button></div>
+    <div class="note">登入請用 Email 驗證碼或連結（Google 登入在內建瀏覽器會被擋）。此模式為網頁版功能：文字、圖片、Excel、Word、PDF、郵件都能翻；螢幕懸浮即時翻譯只在本機模式提供。</div>
+  </div>
+
+  <div class="card glass">
+    <h3>🎨 外觀</h3>
+    <div class="btn-row" style="margin-top:0"><button class="secondary" id="themeToggle">🌓 切換明暗模式</button></div>
+  </div>
+
+  <div id="updMount"></div>
+
+  <div class="card glass">
+    <h3>ℹ 關於</h3>
+    <div class="setRow" style="cursor:default"><div class="grow"><b>版本</b></div><span id="aboutVer" style="font-size:15px"></span></div>
+    <div class="sub" style="margin-top:6px">檔案與圖片都在這支手機上處理，只有要翻譯的文字（或圖片）會送到你選擇的翻譯服務。</div>
+  </div>
+</div></div></div>
+
+<nav id="nav" class="glass">
+  <button data-v="trans" class="on"><svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c.5 3.5 3 6.5 6.5 8M12 5c-.5 3-3 6.5-7.5 8.5"/><path d="M13 20l4-10 4 10M14.5 16.5h5"/></svg>翻譯</button>
+  <button data-v="files"><svg viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>檔案</button>
+  <button data-v="screen"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 9h4M7 12h7"/></svg>螢幕</button>
+  <button data-v="set"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>設定</button>
+</nav>
+
+<div class="modal-mask" id="exModal"><div class="modal-box wide">
+  <h3 id="exTitle">匯出</h3>
+  <div class="field" id="exFmtRow"><label class="lbl">檔案格式</label><select id="exFmt"></select></div>
+  <div class="field" id="exModeRow"><label class="lbl">輸出內容</label><div class="opts" id="exModeBox"></div></div>
+  <div class="sub-opts" id="exBothOpts" style="display:none;">
+    <div class="field"><label class="lbl">排列方式</label>
+      <select id="exLayout">
+        <option value="stack">原文一行、譯文一行（上下對照）</option>
+        <option value="inline">同一行（原文 ｜ 譯文）</option>
+      </select>
+    </div>
+    <label class="chk-line"><input type="checkbox" id="exBlank" checked> 每組原文／譯文之間空一行</label>
+    <div class="field"><label class="lbl">譯文前綴（選填，例如 → ）</label><input type="text" id="exPrefix" placeholder="留空＝不加" autocomplete="off"></div>
+  </div>
+  <div class="field"><label class="lbl">檔名（可自訂，不用輸入副檔名）</label>
+    <div class="name-row"><input type="text" id="exName" autocomplete="off"><span class="ext" id="exExt"></span></div>
+  </div>
+  <div class="field" id="exPreviewWrap"><label class="lbl">預覽</label><div class="preview" id="exPreview"></div></div>
+  <div id="exHint" style="font-size:12px;color:var(--text-muted);margin-bottom:10px;"></div>
+  <div class="btn-row"><button class="primary" id="exOk">下載</button><button class="secondary" id="exCancel">取消</button></div>
+</div></div>
+
+
+<div class="toast" id="toast"></div>

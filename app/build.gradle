@@ -1,0 +1,46 @@
+plugins { id 'com.android.application' }
+
+def appVer = rootProject.file('VERSION').text.trim()
+def verParts = appVer.tokenize('.')
+def verCode = (verParts[0] as int) * 10000 + (verParts[1] as int) * 100 + (verParts[2] as int)
+
+android {
+    namespace 'com.ian.aitrans'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.ian.aitrans'
+        minSdk 26
+        targetSdk 34
+        versionCode verCode
+        versionName appVer
+    }
+    signingConfigs {
+        release {
+            def ks = System.getenv('KEYSTORE_FILE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('KEYSTORE_FILE')) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    packaging { resources.excludes += ['META-INF/*.kotlin_module'] }
+}
+
+dependencies {
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
+    implementation 'com.google.mlkit:text-recognition-japanese:16.0.1'
+    implementation 'com.google.mlkit:text-recognition-korean:16.0.1'
+}
