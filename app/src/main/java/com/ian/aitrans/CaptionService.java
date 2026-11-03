@@ -93,6 +93,7 @@ public class CaptionService extends Service {
     private String pendText = null;            // 待翻譯的最新一句
     private Line pendLine = null;
     private boolean cjk = false;
+    private boolean noTr = false, gemStt = false;
 
     /* 介面 */
     private LinearLayout box, ctl;
@@ -116,7 +117,11 @@ public class CaptionService extends Service {
             sw = dm.widthPixels; sh = dm.heightPixels;
             String code = cfg.optString("code", "en");
             cjk = "cn".equals(code) || "ja".equals(code);
-            if (!Models.ready(this, code)) throw new Exception("還沒有下載這個語言的語音模型");
+            noTr = "none".equals(cfg.optString("engine", "google"));
+            gemStt = "gemini".equals(cfg.optString("stt", "vosk"));
+            if (gemStt) {
+                if (cfg.optString("gemKey", "").isEmpty()) throw new Exception("選了 Gemini 雲端辨識，請先到「設定」填入 Gemini 金鑰");
+            } else if (!Models.ready(this, code)) throw new Exception("還沒有下載這個語言的語音模型");
             if (media) {
                 if (Build.VERSION.SDK_INT < 29) throw new Exception("擷取手機播放的聲音需要 Android 10 以上，可改用麥克風");
                 MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -170,9 +175,11 @@ public class CaptionService extends Service {
     private void audioLoop() {
         Recognizer rg = null;
         try {
-            LibVosk.setLogLevel(LogLevel.WARNINGS);
-            model = new Model(Models.dir(this, cfg.optString("code", "en")).getAbsolutePath());
-            rg = new Recognizer(model, RATE);
+            if (!gemStt) {
+                LibVosk.setLogLevel(LogLevel.WARNINGS);
+                model = new Model(Models.dir(this, cfg.optString("code", "en")).getAbsolutePath());
+                rg = new Recognizer(model, RATE);
+            }
             int min = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
             int bufSize = Math.max(min, RATE * 2);
             AudioFormat fmt = new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(RATE).setChannelMask(AudioFormat.CHANNEL_IN_MONO).build();
@@ -187,6 +194,9 @@ public class CaptionService extends Service {
             rec.startRecording();
             ui.post(new Runnable() { @Override public void run() { setHint("正在聆聽…（開始播放聲音就會出現字幕）"); } });
             byte[] buf = new byte[4096];
+            java.io.ByteArrayOutputStream seg = new java.io.ByteArrayOutputStream();
+            long segStart = 0, lastVoice = 0;
+            boolean segVoice = false;
             long silentSince = System.currentTimeMillis();
             boolean gotAny = false;
             while (alive) {
@@ -201,6 +211,21 @@ public class CaptionService extends Service {
                         silentSince = Long.MAX_VALUE;
                         ui.post(new Runnable() { @Override public void run() { setHint("15 秒都沒有收到聲音：這個 App 可能禁止擷取聲音（例如通話、部分串流），請改用「麥克風」並開擴音"); } });
                     }
+                }
+                if (gemStt) {
+                    long now = System.currentTimeMillis();
+                    double e = 0; int cnt = n / 2;
+                    for (int i = 0; i + 1 < n; i += 2) { short v = (short) ((buf[i] & 0xff) | (buf[i + 1] << 8)); e += (double) v * v; }
+                    boolean voice = Math.sqrt(e / Math.max(1, cnt)) > 350;
+                    if (seg.size() == 0) { segStart = now; segVoice = false; lastVoice = now; }
+                    seg.write(buf, 0, n);
+                    if (voice) { segVoice = true; lastVoice = now; }
+                    long len = now - segStart, quiet = now - lastVoice;
+                    long maxMs = Math.max(3000, cfg.optLong("chunkMs", 5000));
+                    boolean cut = len >= maxMs || (segVoice && quiet >= 700 && len >= 1800);
+                    if (!segVoice && len >= 2500) { seg.reset(); }                     // 整段都沒聲音：丟掉，省額度
+                    else if (cut) { final byte[] pcm = seg.toByteArray(); seg.reset(); sendGem(pcm); }
+                    continue;
                 }
                 if (rg.acceptWaveForm(buf, n)) onText(new JSONObject(rg.getResult()).optString("text", ""), true);
                 else onText(new JSONObject(rg.getPartialResult()).optString("partial", ""), false);
@@ -218,6 +243,43 @@ public class CaptionService extends Service {
             try { if (rg != null) rg.close(); } catch (Throwable t) { /* ignore */ }
             try { if (model != null) model.close(); } catch (Throwable t) { /* ignore */ }
         }
+    }
+
+    private volatile int gemBusy = 0;
+
+    private static byte[] wav(byte[] pcm) {
+        int n = pcm.length;
+        java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(44 + n).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        b.put("RIFF".getBytes()).putInt(36 + n).put("WAVE".getBytes()).put("fmt ".getBytes()).putInt(16).putShort((short) 1).putShort((short) 1)
+            .putInt(RATE).putInt(RATE * 2).putShort((short) 2).putShort((short) 16).put("data".getBytes()).putInt(n).put(pcm);
+        return b.array();
+    }
+
+    private void sendGem(final byte[] pcm) {
+        if (gemBusy >= 2) return;                                   // 網路太慢時丟掉舊的，避免字幕越拖越久
+        gemBusy++;
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    final String[] r = Translator.geminiAudio(cfg, wav(pcm), !noTr);
+                    if (!r[0].isEmpty()) {
+                        ui.post(new Runnable() {
+                            @Override public void run() {
+                                lastActive = System.currentTimeMillis();
+                                Line l = new Line();
+                                l.orig = r[0]; l.tr = noTr ? "" : r[1]; l.fin = true; l.at = lastActive;
+                                lines.add(l);
+                                while (lines.size() > 4) lines.remove(0);
+                                live = null;
+                                render();
+                            }
+                        });
+                    }
+                } catch (final Throwable t) {
+                    ui.post(new Runnable() { @Override public void run() { setHint("⚠ " + shortMsg(t)); } });
+                } finally { gemBusy--; }
+            }
+        }).start();
     }
 
     private String clean(String s) {
@@ -245,6 +307,7 @@ public class CaptionService extends Service {
 
     /* ================= 翻譯 ================= */
     private void queue(Line l, boolean fin) {
+        if (noTr || gemStt) return;
         synchronized (tq) { pendLine = l; pendText = l.orig; tq.notifyAll(); }
     }
 
@@ -302,6 +365,13 @@ public class CaptionService extends Service {
         String f = style.optString("font", "sans");
         boolean b = style.optBoolean("bold", true);
         int st = b ? Typeface.BOLD : Typeface.NORMAL;
+        if (f.startsWith("dl:")) {
+            try {
+                String id = f.substring(3);
+                if (Fonts.ready(this, id)) return Typeface.create(Typeface.createFromFile(Fonts.file(this, id)), st);
+            } catch (Throwable t) { android.util.Log.e("AIT-cap", "font", t); }
+            return Typeface.create(Typeface.SANS_SERIF, st);
+        }
         if ("serif".equals(f)) return Typeface.create(Typeface.SERIF, st);
         if ("mono".equals(f)) return Typeface.create(Typeface.MONOSPACE, st);
         if ("casual".equals(f)) return Typeface.create("casual", st);
@@ -431,6 +501,13 @@ public class CaptionService extends Service {
         }
         boolean has = !lines.isEmpty();
         if (has && tvHint.getVisibility() == View.VISIBLE && !paused) setHint("");
+        if (noTr) {                                           // 不翻譯：原文就是字幕
+            tvTr.setText(o.toString());
+            tvOrig.setVisibility(View.GONE);
+            tvTr.setVisibility(has ? View.VISIBLE : View.GONE);
+            box.setAlpha(has || tvHint.getVisibility() == View.VISIBLE || ctl.getVisibility() == View.VISIBLE ? 1f : 0.0f);
+            return;
+        }
         tvOrig.setText(o.toString());
         tvTr.setText(t.toString());
         tvOrig.setVisibility(has && style.optBoolean("showOrig", true) ? View.VISIBLE : View.GONE);

@@ -296,8 +296,9 @@ public class FloatService extends Service {
             @Override public void run() {
                 try {
                     List<String[]> pairs = new ArrayList<String[]>();
-                    if ("claude".equals(cfg.optString("ocr", "mlkit"))) {
-                        pairs = Translator.claudeVision(cfg, c);
+                    String ocrMode = cfg.optString("ocr", "mlkit");
+                    if (!"mlkit".equals(ocrMode)) {
+                        pairs = Translator.vision(cfg, c, ocrMode);
                     } else {
                         List<String> blocks = Ocr.recognize(c, cfg.optString("src", "auto"));
                         String key = String.valueOf(blocks.hashCode());

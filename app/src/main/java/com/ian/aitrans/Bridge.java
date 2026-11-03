@@ -120,6 +120,13 @@ public class Bridge {
         });
     }
 
+    /* ---------- 字幕字體／離線翻譯 ---------- */
+    @JavascriptInterface public String capFonts() { return Fonts.listJson(act); }
+    @JavascriptInterface public void capFontDownload(String id) { Fonts.download(act, id); }
+    @JavascriptInterface public void capFontDelete(String id) { Fonts.delete(act, id); }
+    @JavascriptInterface public String capFontPath(String id) { return Fonts.ready(act, id) ? "file://" + Fonts.file(act, id).getAbsolutePath() : ""; }
+    @JavascriptInterface public void mtTranslate(String id, String json) { Mt.run(id, json); }
+
     /* ---------- Claude 訂閱引擎（背景網頁版翻譯器） ---------- */
     @JavascriptInterface public void cengStart(String url) { ClaudeEngine.start(act, url); }
     @JavascriptInterface public void cengStop() { ClaudeEngine.stop(act); }

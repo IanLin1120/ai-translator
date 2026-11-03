@@ -182,7 +182,12 @@
     <h3>🎧 即時字幕（影片／通話／音檔）</h3>
     <p class="desc">聽到外文就即時翻成懸浮字幕，浮在影片、視訊或語音通話、音檔播放的畫面上方。字幕的顏色、大小、字體都能自訂。</p>
     <div id="capNative">
-      <div class="two">
+      <div class="field"><label class="lbl">語音辨識方式</label>
+        <select id="capStt">
+          <option value="vosk">離線辨識（免費、不用網路；要先下載語音模型）</option>
+          <option value="gemini">Gemini 雲端辨識（免費金鑰；更準、自動辨識語言、不用下載）</option>
+        </select></div>
+      <div class="two" id="capLangRow">
         <div class="field"><label class="lbl">聽到的語言</label><select id="capLang"></select></div>
         <div class="field"><label class="lbl">聲音來源</label>
           <select id="capSrc">
@@ -190,10 +195,13 @@
             <option value="mic">麥克風／通話擴音</option>
           </select></div>
       </div>
-      <div class="perm"><span id="capModelTx">語音模型：—</span><span class="grow"></span><button class="btn sm" id="btnCapDl">下載</button><button class="btn sm" id="btnCapDel" style="display:none">刪除</button></div>
+      <div class="field" id="capChunkRow" style="display:none"><label class="lbl">字幕更新間隔（雲端辨識）</label>
+        <select id="capChunk"><option value="3500">約 3.5 秒（較即時，較耗免費額度）</option><option value="5000" selected>約 5 秒（建議）</option><option value="8000">約 8 秒（較省額度、句子較完整）</option></select></div>
+      <div class="perm" id="capModelRow"><span id="capModelTx">語音模型：—</span><span class="grow"></span><button class="btn sm" id="btnCapDl">下載</button><button class="btn sm" id="btnCapDel" style="display:none">刪除</button></div>
       <div class="bar" id="capBarWrap" style="display:none"><i id="capBar"></i></div>
-      <div class="field"><label class="lbl">翻譯引擎</label>
+      <div class="field"><label class="lbl">字幕翻譯</label>
         <select id="capEng">
+          <option value="none">不翻譯（只顯示聽到的原文）</option>
           <option value="google">Google 翻譯（免費）</option>
           <option value="claude">Claude 翻譯（需金鑰、依用量計費）</option>
         </select></div>
@@ -208,13 +216,14 @@
         <div class="field"><label class="lbl">背景顏色</label><input type="color" id="capBg"></div>
         <div class="field"><label class="lbl">字體</label>
           <select id="capFont">
-            <option value="sans">黑體（預設）</option>
-            <option value="serif">明體／襯線</option>
-            <option value="mono">等寬</option>
-            <option value="casual">圓潤</option>
-            <option value="cursive">手寫</option>
+            <option value="sans">系統黑體（預設）</option>
+            <option value="serif">系統襯線</option>
+            <option value="mono">系統等寬</option>
           </select></div>
       </div>
+      <div class="perm" id="capFontRow" style="display:none"><span id="capFontTx">字體尚未下載</span><span class="grow"></span><button class="btn sm" id="btnFontDl">下載</button><button class="btn sm" id="btnFontDel" style="display:none">刪除</button></div>
+      <div class="bar" id="capFontBarWrap" style="display:none"><i id="capFontBar"></i></div>
+      <div class="help" style="margin-top:-2px">手機的中文字不會因為系統字體家族而改變，所以另外提供真正的中文字體（開源授權）可下載，下載一次就能離線使用。</div>
       <div class="field"><label class="lbl">背景透明度 <b id="capBgAv"></b></label><input type="range" id="capBgA" min="0" max="100" step="5"></div>
       <div class="field"><label class="lbl">譯文大小 <b id="capSizeV"></b></label><input type="range" id="capSize" min="12" max="48" step="1"></div>
       <div class="field"><label class="lbl">原文大小 <b id="capOSizeV"></b></label><input type="range" id="capOSize" min="9" max="32" step="1"></div>

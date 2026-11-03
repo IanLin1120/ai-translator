@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /** 懸浮翻譯用的翻譯／看圖辨識（Google 翻譯、Claude API）。 */
@@ -25,7 +26,10 @@ final class Translator {
 
     static List<String> translate(JSONObject cfg, List<String> texts) throws Exception {
         String engine = cfg.optString("engine", "google");
-        if ("claude".equals(engine)) return claudeTexts(cfg, texts);
+        if ("none".equals(engine)) return new ArrayList<String>(texts);
+        if ("claude".equals(engine) || "gemini".equals(engine) || "openai".equals(engine)) return llmTexts(cfg, texts, engine);
+        if ("deepl".equals(engine)) return deepl(cfg, texts);
+        if ("mlkit".equals(engine)) return Mt.translate(cfg.optString("src", "auto"), cfg.optString("tgt", "zh-TW"), texts);
         return google(cfg, texts);
     }
 
@@ -120,22 +124,110 @@ final class Translator {
         return new JSONArray(s.substring(a, b + 1));
     }
 
-    private static List<String> claudeTexts(JSONObject cfg, List<String> texts) throws Exception {
+    /* ---------------- Gemini（免費金鑰）／OpenAI 相容（Groq、OpenRouter、Ollama…） ---------------- */
+    private static String gemini(JSONObject cfg, String prompt, String imgB64, String mime, boolean json) throws Exception {
+        String key = cfg.optString("gemKey", "");
+        if (key.isEmpty()) throw new Exception("尚未設定 Gemini API 金鑰");
+        String model = cfg.optString("gemModel", "gemini-2.5-flash");
+        JSONArray parts = new JSONArray();
+        if (imgB64 != null) parts.put(new JSONObject().put("inline_data", new JSONObject().put("mime_type", mime).put("data", imgB64)));
+        parts.put(new JSONObject().put("text", prompt));
+        JSONObject gc = new JSONObject().put("temperature", 0.2);
+        if (json) gc.put("responseMimeType", "application/json");
+        JSONObject body = new JSONObject().put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts))).put("generationConfig", gc);
+        Map<String, String> h = new HashMap<String, String>();
+        h.put("content-type", "application/json");
+        String r;
+        try {
+            r = Util.http("POST", "https://generativelanguage.googleapis.com/v1beta/models/" + URLEncoder.encode(model, "UTF-8") + ":generateContent?key=" + URLEncoder.encode(key, "UTF-8"), h, body.toString(), 60000);
+        } catch (Exception e) {
+            String m = String.valueOf(e.getMessage());
+            if (m.contains("HTTP 429")) throw new Exception("Gemini 免費額度或速率已達上限，稍後再試或換較小的模型（flash-lite）");
+            if (m.contains("HTTP 400") && m.contains("API key")) throw new Exception("Gemini 金鑰無效");
+            throw e;
+        }
+        JSONObject root = new JSONObject(r);
+        JSONArray cands = root.optJSONArray("candidates");
+        if (cands == null || cands.length() == 0) throw new Exception("Gemini 沒有回應內容（可能被安全過濾）");
+        JSONArray ps = cands.getJSONObject(0).getJSONObject("content").getJSONArray("parts");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ps.length(); i++) sb.append(ps.getJSONObject(i).optString("text"));
+        return sb.toString();
+    }
+
+    private static String openai(JSONObject cfg, String prompt, String imgB64, String mime) throws Exception {
+        String base = cfg.optString("oaiBase", "").trim();
+        if (base.isEmpty()) throw new Exception("尚未設定 OpenAI 相容 API 網址");
+        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        Object content = prompt;
+        if (imgB64 != null) {
+            content = new JSONArray().put(new JSONObject().put("type", "text").put("text", prompt))
+                .put(new JSONObject().put("type", "image_url").put("image_url", new JSONObject().put("url", "data:" + mime + ";base64," + imgB64)));
+        }
+        JSONObject body = new JSONObject().put("model", cfg.optString("oaiModel", "")).put("temperature", 0.2)
+            .put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", content)));
+        Map<String, String> h = new HashMap<String, String>();
+        h.put("content-type", "application/json");
+        String k = cfg.optString("oaiKey", "");
+        if (!k.isEmpty()) h.put("Authorization", "Bearer " + k);
+        String r = Util.http("POST", base + "/chat/completions", h, body.toString(), 90000);
+        return new JSONObject(r).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content");
+    }
+
+    private static String callLlm(JSONObject cfg, String engine, String prompt, String imgB64, String mime) throws Exception {
+        if ("gemini".equals(engine)) return gemini(cfg, prompt, imgB64, mime, true);
+        if ("openai".equals(engine)) return openai(cfg, prompt, imgB64, mime);
+        JSONArray content = new JSONArray();
+        if (imgB64 != null) content.put(new JSONObject().put("type", "image").put("source", new JSONObject().put("type", "base64").put("media_type", mime).put("data", imgB64)));
+        content.put(new JSONObject().put("type", "text").put("text", prompt));
+        return claude(cfg, content, 3000);
+    }
+
+    private static List<String> llmTexts(JSONObject cfg, List<String> texts, String engine) throws Exception {
         String sn = "auto".equals(cfg.optString("src", "auto")) ? "自動偵測原文語言" : cfg.optString("srcName", "原文");
         String tn = cfg.optString("tgtName", "繁體中文");
         JSONArray in = new JSONArray();
         for (String t : texts) in.put(t);
         String prompt = "你是專業翻譯引擎。把下列 JSON 陣列中的每一段文字從" + sn + "翻譯成" + tn + "，語意自然、專業。" +
             "規則：順序與數量必須完全一致；不要翻譯純數字、代碼、網址；不要加解釋；只回傳 JSON 字串陣列。\n輸入：\n" + in.toString();
-        JSONArray content = new JSONArray().put(new JSONObject().put("type", "text").put("text", prompt));
-        JSONArray res = extractArray(claude(cfg, content, 3000));
+        JSONArray res = extractArray(callLlm(cfg, engine, prompt, null, null));
         List<String> out = new ArrayList<String>();
         for (int i = 0; i < texts.size(); i++) out.add(i < res.length() ? res.optString(i, texts.get(i)) : texts.get(i));
         return out;
     }
 
-    /** Claude 看圖：回傳 [原文, 譯文] 清單。 */
-    static List<String[]> claudeVision(JSONObject cfg, Bitmap bmp) throws Exception {
+    /* ---------------- DeepL（免費金鑰；額度 50 萬字／月） ---------------- */
+    private static String deeplCode(String c, boolean target) {
+        if (c == null || c.isEmpty() || "auto".equals(c)) return null;
+        String l = c.toLowerCase(Locale.ROOT);
+        if (l.equals("zh-tw") || l.equals("zh-hant")) return target ? "ZH-HANT" : "ZH";
+        if (l.startsWith("zh")) return target ? "ZH-HANS" : "ZH";
+        String b = l.split("-")[0].toUpperCase(Locale.ROOT);
+        if (target && b.equals("EN")) return "EN-US";
+        if (target && b.equals("PT")) return "PT-BR";
+        return b;
+    }
+
+    private static List<String> deepl(JSONObject cfg, List<String> texts) throws Exception {
+        String key = cfg.optString("deeplKey", "");
+        if (key.isEmpty()) throw new Exception("尚未設定 DeepL 金鑰");
+        String host = key.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
+        JSONArray arr = new JSONArray();
+        for (String t : texts) arr.put(t);
+        JSONObject body = new JSONObject().put("text", arr).put("target_lang", deeplCode(cfg.optString("tgt", "zh-TW"), true));
+        String sl = deeplCode(cfg.optString("src", "auto"), false);
+        if (sl != null) body.put("source_lang", sl);
+        Map<String, String> h = new HashMap<String, String>();
+        h.put("content-type", "application/json");
+        h.put("Authorization", "DeepL-Auth-Key " + key);
+        JSONArray tr = new JSONObject(Util.http("POST", host + "/v2/translate", h, body.toString(), 30000)).getJSONArray("translations");
+        List<String> out = new ArrayList<String>();
+        for (int i = 0; i < texts.size(); i++) out.add(i < tr.length() ? tr.getJSONObject(i).optString("text", texts.get(i)) : texts.get(i));
+        return out;
+    }
+
+    /** 看圖辨識＋翻譯（Claude／Gemini／OpenAI 相容的視覺模型）：回傳 [原文, 譯文] 清單。 */
+    static List<String[]> vision(JSONObject cfg, Bitmap bmp, String engine) throws Exception {
         String sn = "auto".equals(cfg.optString("src", "auto")) ? "自動偵測" : cfg.optString("srcName", "原文");
         String tn = cfg.optString("tgtName", "繁體中文");
         ByteArrayOutputStream bo = new ByteArrayOutputStream();
@@ -143,10 +235,7 @@ final class Translator {
         String b64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
         String prompt = "請辨識這張圖片中的所有文字（依閱讀順序），來源語言：" + sn + "，並翻譯成" + tn + "。每一句話或每一個獨立文字標籤各一項。" +
             "格式：[{\"original\":\"原文\",\"translated\":\"譯文\"}]。只回傳 JSON 陣列；沒有文字就回傳 []。";
-        JSONArray content = new JSONArray();
-        content.put(new JSONObject().put("type", "image").put("source", new JSONObject().put("type", "base64").put("media_type", "image/jpeg").put("data", b64)));
-        content.put(new JSONObject().put("type", "text").put("text", prompt));
-        JSONArray res = extractArray(claude(cfg, content, 3000));
+        JSONArray res = extractArray(callLlm(cfg, engine, prompt, b64, "image/jpeg"));
         List<String[]> out = new ArrayList<String[]>();
         for (int i = 0; i < res.length(); i++) {
             JSONObject o = res.optJSONObject(i);
@@ -155,5 +244,20 @@ final class Translator {
             if (!a.trim().isEmpty() || !b.trim().isEmpty()) out.add(new String[] {a, b});
         }
         return out;
+    }
+
+    static List<String[]> claudeVision(JSONObject cfg, Bitmap bmp) throws Exception { return vision(cfg, bmp, "claude"); }
+
+    /** 聲音片段（WAV）→ {原文, 譯文}（Gemini 能直接聽音檔；自動辨識語言）。 */
+    static String[] geminiAudio(JSONObject cfg, byte[] wav, boolean translate) throws Exception {
+        String tn = cfg.optString("tgtName", "繁體中文");
+        String prompt = "Transcribe the speech in this audio clip (detect the language automatically)." + (translate ? " Then translate it into " + tn + "." : "") +
+            " Reply ONLY with JSON: {\"original\":\"...\"" + (translate ? ",\"translation\":\"...\"" : "") + "}. " +
+            "If there is no clear human speech (silence, music, noise), reply {\"original\":\"\"" + (translate ? ",\"translation\":\"\"" : "") + "}. Never invent text.";
+        String r = gemini(cfg, prompt, Base64.encodeToString(wav, Base64.NO_WRAP), "audio/wav", true);
+        int a = r.indexOf('{'), b = r.lastIndexOf('}');
+        if (a < 0 || b <= a) return new String[] {"", ""};
+        JSONObject o = new JSONObject(r.substring(a, b + 1));
+        return new String[] {o.optString("original", "").trim(), o.optString("translation", "").trim()};
     }
 }

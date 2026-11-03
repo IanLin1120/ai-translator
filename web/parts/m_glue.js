@@ -399,21 +399,23 @@ $('btnFlStart').addEventListener('click', function(){
   flSavePrefs();
   var p = flPrefs();
   if((p.ocr === 'claude' || p.engine === 'claude') && !CFG.anthropicKey){ toast('選了 Claude 辨識／翻譯，請先到「設定」填入 API 金鑰', true); return; }
+  var mk2 = window.ENX ? (ENX.missingKey(p.engine) || (p.ocr === 'gemini' ? ENX.missingKey('gemini') : '') || (p.ocr === 'openai' ? ENX.missingKey('openai') : '')) : ''; if(mk2){ toast(mk2, true); return; }
   if(!NAT.call('canOverlay')){ toast('請先允許「顯示在其他應用程式上層」', true); NAT.call('askOverlay'); return; }
   var cfg = {src: srcSel.value, tgt: tgtSel.value, srcName: langName(srcSel.value), tgtName: langName(tgtSel.value),
     ocr: p.ocr, engine: p.engine, gKey: CFG.gKey, aKey: CFG.anthropicKey, model: CFG.model,
     sens: p.sens, gap: parseInt(p.gap, 10) || 2500, showOrig: !!p.showOrig};
+  Object.assign(cfg, window.ENX ? ENX.nativeCfg() : {});
   NAT.call('startFloat', JSON.stringify(cfg));
   setFlState('正在啟動…請在系統視窗允許螢幕錄製');
 });
 $('btnFlStop').addEventListener('click', function(){ NAT.call('stopFloat'); FL.running = false; setFlState(); });
 
 /* ---------- 即時字幕（影片／通話／音檔） ---------- */
-var CAP = {running: false, models: [], dl: {}};
-var CAP_DEF = {code: 'en', source: 'media', engine: 'google', txt: '#ffffff', orig: '#ffd27f', bg: '#000000', bgA: 60, font: 'sans', size: 22, osize: 14, lines: 2, posY: '0.72', showOrig: true, bold: true, outline: true};
+var CAP = {running: false, models: [], dl: {}, fonts: [], fdl: {}};
+var CAP_DEF = {stt: 'vosk', chunk: '5000', code: 'en', source: 'media', engine: 'google', txt: '#ffffff', orig: '#ffd27f', bg: '#000000', bgA: 60, font: 'sans', size: 22, osize: 14, lines: 2, posY: '0.72', showOrig: true, bold: true, outline: true};
 function capPrefs(){ return Object.assign({}, CAP_DEF, lsGet('ait.cap', {})); }
 function capReadUi(){
-  return {code: $('capLang').value, source: $('capSrc').value, engine: $('capEng').value, txt: $('capTxt').value, orig: $('capOrig').value, bg: $('capBg').value,
+  return {stt: $('capStt').value, chunk: $('capChunk').value, code: $('capLang').value, source: $('capSrc').value, engine: $('capEng').value, txt: $('capTxt').value, orig: $('capOrig').value, bg: $('capBg').value,
     bgA: +$('capBgA').value, font: $('capFont').value, size: +$('capSize').value, osize: +$('capOSize').value, lines: +$('capLines').value, posY: $('capPos').value,
     showOrig: $('capShowOrig').checked, bold: $('capBold').checked, outline: $('capOutline').checked};
 }
@@ -426,7 +428,7 @@ function capPreview(){
   var rgb = p.bg.replace('#', ''), r = parseInt(rgb.slice(0, 2), 16), g = parseInt(rgb.slice(2, 4), 16), b = parseInt(rgb.slice(4, 6), 16);
   var sh = p.outline ? '0 0 3px #000,0 0 3px #000' : 'none';
   var po = $('capPrevO'), pt = $('capPrevT');
-  [po, pt].forEach(function(e){ e.style.background = 'rgba(' + r + ',' + g + ',' + b + ',' + (p.bgA / 100) + ')'; e.style.fontFamily = CAP_FONT[p.font] || 'sans-serif'; e.style.textShadow = sh; });
+  [po, pt].forEach(function(e){ e.style.background = 'rgba(' + r + ',' + g + ',' + b + ',' + (p.bgA / 100) + ')'; e.style.fontFamily = /^dl:/.test(p.font) ? ('AITcap_' + p.font.slice(3) + ',sans-serif') : (CAP_FONT[p.font] || 'sans-serif'); e.style.textShadow = sh; });
   po.style.color = p.orig; po.style.fontSize = p.osize + 'px'; po.style.display = p.showOrig ? '' : 'none'; po.style.fontWeight = '400';
   pt.style.color = p.txt; pt.style.fontSize = p.size + 'px'; pt.style.fontWeight = p.bold ? '700' : '400';
   $('capBgAv').textContent = p.bgA + '%'; $('capSizeV').textContent = p.size; $('capOSizeV').textContent = p.osize;
@@ -458,6 +460,35 @@ function setCapState(txt){
   $('capState').textContent = txt || (CAP.running ? '執行中：切到影片／音檔 App 開始播放' : '尚未啟動');
   $('btnCapStart').disabled = CAP.running; $('btnCapStop').disabled = !CAP.running;
 }
+function capSttUi(){
+  var g = $('capStt').value === 'gemini';
+  $('capLangRow').style.display = g ? 'none' : ''; $('capModelRow').style.display = g ? 'none' : ''; $('capChunkRow').style.display = g ? '' : 'none';
+  if(!g) capModelUi(); else $('capBarWrap').style.display = 'none';
+}
+function capLoadFonts(){
+  try{ CAP.fonts = JSON.parse(NAT.call('capFonts') || '[]'); }catch(e){ CAP.fonts = []; }
+  var sel = $('capFont'), cur = capPrefs().font;
+  Array.prototype.slice.call(sel.options).forEach(function(o){ if(/^dl:/.test(o.value)) o.remove(); });
+  CAP.fonts.forEach(function(f){ sel.appendChild(h('option', {value: 'dl:' + f.id}, f.name + (f.ready ? '　✓' : '（下載約 ' + f.mb + ' MB）'))); });
+  sel.value = cur; if(sel.value !== cur) sel.value = 'sans';
+  capFontUi();
+}
+var FONT_LOADED = {};
+function capFontUi(){
+  var v = $('capFont').value, dl = /^dl:/.test(v), f = dl && CAP.fonts.filter(function(x){ return 'dl:' + x.id === v; })[0];
+  $('capFontRow').style.display = dl ? '' : 'none';
+  if(dl && f){
+    var d = CAP.fdl[f.id], busy = d && d.st === 'download';
+    $('capFontTx').textContent = busy ? '下載字體中… ' + d.pct + '%' : d && d.st === 'error' ? '下載失敗：' + d.msg : f.ready ? '字體已下載（離線可用）' : '字體尚未下載（約 ' + f.mb + ' MB）';
+    $('btnFontDl').style.display = !f.ready && !busy ? '' : 'none'; $('btnFontDel').style.display = f.ready ? '' : 'none';
+    $('capFontBarWrap').style.display = busy ? '' : 'none'; $('capFontBar').style.width = (d && d.pct || 0) + '%';
+    if(f.ready && !FONT_LOADED[f.id]){
+      var path = NAT.call('capFontPath', f.id);
+      if(path && window.FontFace){ try{ var ff = new FontFace('AITcap_' + f.id, 'url("' + path + '")'); ff.load().then(function(x){ document.fonts.add(x); FONT_LOADED[f.id] = true; capPreview(); }).catch(function(){}); }catch(e){} }
+    }
+  }
+  capPreview();
+}
 function refreshCap(){
   var native = isApp && NAT.has('capStart');
   $('capNative').style.display = native ? '' : 'none';
@@ -467,26 +498,36 @@ function refreshCap(){
   $('capSrc').value = p.source; $('capEng').value = p.engine; $('capTxt').value = p.txt; $('capOrig').value = p.orig; $('capBg').value = p.bg; $('capBgA').value = p.bgA;
   $('capFont').value = p.font; $('capSize').value = p.size; $('capOSize').value = p.osize; $('capLines').value = p.lines; $('capPos').value = p.posY;
   $('capShowOrig').checked = p.showOrig; $('capBold').checked = p.bold; $('capOutline').checked = p.outline;
+  $('capStt').value = p.stt; $('capChunk').value = p.chunk;
   $('capLang').value = p.code;
-  capLoadModels(); capPreview();
+  capLoadFonts(); capLoadModels(); capPreview(); capSttUi();
   CAP.running = !!NAT.call('capRunning'); setCapState();
 }
+if(window.ENX){ ENX.addOptions($('capEng'), ['gemini', 'openai', 'deepl', 'mlkit']); ENX.addOptions($('flEngine'), ['gemini', 'openai', 'deepl', 'mlkit']); ENX.addOptions($('flOcr'), [], [['gemini', 'Gemini 看圖（免費金鑰，更準）'], ['openai', 'OpenAI 相容視覺模型（需支援看圖）']]); }
 if(isApp && NAT.has('capStart')){
-  ['capLang', 'capSrc', 'capEng', 'capTxt', 'capOrig', 'capBg', 'capBgA', 'capFont', 'capSize', 'capOSize', 'capLines', 'capPos', 'capShowOrig', 'capBold', 'capOutline'].forEach(function(id){
+  ['capStt', 'capChunk', 'capLang', 'capSrc', 'capEng', 'capTxt', 'capOrig', 'capBg', 'capBgA', 'capFont', 'capSize', 'capOSize', 'capLines', 'capPos', 'capShowOrig', 'capBold', 'capOutline'].forEach(function(id){
     $(id).addEventListener(id === 'capBgA' || id === 'capSize' || id === 'capOSize' || /^cap(Txt|Orig|Bg)$/.test(id) ? 'input' : 'change', capSave);
   });
   $('capLang').addEventListener('change', capModelUi);
+  $('capStt').addEventListener('change', capSttUi);
+  $('capFont').addEventListener('change', capFontUi);
+  $('btnFontDl').addEventListener('click', function(){ var id = $('capFont').value.slice(3); CAP.fdl[id] = {st: 'download', pct: 0}; capFontUi(); NAT.call('capFontDownload', id); });
+  $('btnFontDel').addEventListener('click', function(){ NAT.call('capFontDelete', $('capFont').value.slice(3)); });
   $('btnCapDl').addEventListener('click', function(){ var c = $('capLang').value; CAP.dl[c] = {st: 'download', pct: 0}; capModelUi(); NAT.call('capDownload', c); });
   $('btnCapDel').addEventListener('click', function(){ NAT.call('capDelete', $('capLang').value); });
   $('btnCapReset').addEventListener('click', function(){ var keep = capPrefs(); lsSet('ait.cap', Object.assign({}, CAP_DEF, {code: keep.code, source: keep.source, engine: keep.engine})); refreshCap(); capSave(); });
   $('btnCapStart').addEventListener('click', function(){
     capSave();
     var p = capPrefs(), m = CAP.models.filter(function(x){ return x.code === p.code; })[0];
-    if(!m || !m.ready){ toast('請先下載這個語言的語音模型', true); return; }
+    var gem = p.stt === 'gemini';
+    if(!gem && (!m || !m.ready)){ toast('請先下載這個語言的語音模型，或改用 Gemini 雲端辨識', true); return; }
+    if(gem && !(window.ENX && ENX.cfg().gemKey)){ toast('Gemini 雲端辨識需要金鑰：請到「設定」填入（免費申請）', true); return; }
     if(p.engine === 'claude' && !CFG.anthropicKey){ toast('選了 Claude 翻譯，請先到「設定」填入 API 金鑰', true); return; }
+    var mk = window.ENX ? ENX.missingKey(p.engine) : ''; if(mk){ toast(mk, true); return; }
+    if(p.font && /^dl:/.test(p.font)){ var ff = CAP.fonts.filter(function(x){ return 'dl:' + x.id === p.font; })[0]; if(ff && !ff.ready){ toast('這個字體還沒下載，先用系統字體顯示（可在樣式區下載）'); } }
     if(!NAT.call('canOverlay')){ toast('請先允許「顯示在其他應用程式上層」', true); NAT.call('askOverlay'); return; }
-    var cfg = {code: p.code, src: m.g, srcName: m.name, tgt: tgtSel.value, tgtName: langName(tgtSel.value), source: p.source, engine: p.engine,
-      gKey: CFG.gKey, aKey: CFG.anthropicKey, model: CFG.model, style: capStyleOf(p)};
+    var cfg = Object.assign({code: p.code, src: gem ? 'auto' : m.g, srcName: gem ? '自動偵測' : m.name, tgt: tgtSel.value, tgtName: langName(tgtSel.value), source: p.source, engine: p.engine,
+      stt: p.stt, chunkMs: parseInt(p.chunk, 10) || 5000, gKey: CFG.gKey, aKey: CFG.anthropicKey, model: CFG.model, style: capStyleOf(p)}, window.ENX ? ENX.nativeCfg() : {});
     NAT.call('capStart', JSON.stringify(cfg));
     setCapState(p.source === 'media' ? '正在啟動…請允許錄音，並在系統視窗按「立即開始」' : '正在啟動…請允許錄音');
   });
@@ -507,9 +548,15 @@ window.onNativeEvent = function(type, data){
       else if(d.state === 'error'){ FL.running = false; setFlState(); toast('懸浮翻譯錯誤：' + (d.msg || ''), true); }
     }
     else if(type === 'perm') refreshFloat();
+    else if(type === 'mt'){ if(window.ENX) ENX.onMt(data); }
     else if(type === 'cap'){
       var cd = typeof data === 'string' ? JSON.parse(data) : data;
-      if(cd.state === 'model'){
+      if(cd.state === 'font'){
+        CAP.fdl[cd.id] = {st: cd.st, pct: cd.pct, msg: cd.msg};
+        if(cd.st === 'ready' || cd.st === 'deleted' || cd.st === 'error'){ if(cd.st === 'ready') toast('✓ 字體下載完成'); if(cd.st === 'error') toast('字體下載失敗：' + cd.msg, true); if(cd.st === 'deleted') delete FONT_LOADED[cd.id]; capLoadFonts(); }
+        else capFontUi();
+      }
+      else if(cd.state === 'model'){
         CAP.dl[cd.code] = {st: cd.st, pct: cd.pct, msg: cd.msg};
         if(cd.st === 'ready' || cd.st === 'deleted' || cd.st === 'error'){ if(cd.st === 'ready') toast('✓ 語音模型下載完成'); if(cd.st === 'error') toast('語音模型下載失敗：' + cd.msg, true); capLoadModels(); }
         else capModelUi();
