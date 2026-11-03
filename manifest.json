@@ -1,0 +1,36 @@
+{
+ "pairs": {
+  "en-zh": {
+   "id": "Xenova/opus-mt-en-zh",
+   "prefix": ">>cmn_Hans<< "
+  },
+  "zh-en": {
+   "id": "Xenova/opus-mt-zh-en",
+   "prefix": ""
+  },
+  "ja-en": {
+   "id": "Xenova/opus-mt-ja-en",
+   "prefix": ""
+  },
+  "en-jap": {
+   "id": "Xenova/opus-mt-en-jap",
+   "prefix": ""
+  },
+  "ko-en": {
+   "id": "Xenova/opus-mt-ko-en",
+   "prefix": ""
+  },
+  "es-en": {
+   "id": "Xenova/opus-mt-es-en",
+   "prefix": ""
+  },
+  "fr-en": {
+   "id": "Xenova/opus-mt-fr-en",
+   "prefix": ""
+  },
+  "de-en": {
+   "id": "Xenova/opus-mt-de-en",
+   "prefix": ""
+  }
+ }
+}
