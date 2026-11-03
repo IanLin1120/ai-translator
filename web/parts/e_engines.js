@@ -63,10 +63,62 @@ try{
 engineSel.addEventListener('change', function(){ try{ localStorage.setItem('ait.engine', JSON.stringify(engineSel.value)); }catch(e){} });
 
 /* ---------- LLM 呼叫（回傳解析好的 JSON） ---------- */
+/* ---------- Groq 用量：從回應標頭（若瀏覽器可讀）＋本機累計 ---------- */
+var GQ = {h: null, at: 0, req: 0, tok: 0, day: '', retry: 0};
+try{ var _g = JSON.parse(localStorage.getItem('ait.gq') || '{}'); if(_g.day === new Date().toISOString().slice(0, 10)) GQ = Object.assign(GQ, _g); }catch(e){}
+function gqSave(){ try{ GQ.day = new Date().toISOString().slice(0, 10); localStorage.setItem('ait.gq', JSON.stringify({h: GQ.h, at: GQ.at, req: GQ.req, tok: GQ.tok, day: GQ.day})); }catch(e){} }
+function isGroqUrl(u){ return /api\.groq\.com/i.test(u || ''); }
+function gqHeaders(r){
+  var g = function(k){ return r.headers.get(k); }, h = {};
+  ['limit-requests', 'remaining-requests', 'reset-requests', 'limit-tokens', 'remaining-tokens', 'reset-tokens'].forEach(function(k){ var v = g('x-ratelimit-' + k); if(v != null) h[k] = v; });
+  var ra = g('retry-after'); if(ra) h.retry = ra;
+  return Object.keys(h).length ? h : null;
+}
 async function httpJson(url, opt){
   var r = await fetch(url, opt), t = await r.text();
-  if(!r.ok){ var e = new Error('HTTP ' + r.status + ' ' + t.slice(0, 240)); e.status = r.status; throw e; }
+  if(isGroqUrl(url)){
+    var h = gqHeaders(r); if(h){ GQ.h = h; GQ.at = Date.now(); }
+    GQ.req++;
+    try{ var u = JSON.parse(t).usage; if(u && u.total_tokens) GQ.tok += u.total_tokens; }catch(e){}
+    gqSave(); gqRender();
+  }
+  if(!r.ok){
+    var e = new Error('HTTP ' + r.status + ' ' + t.slice(0, 240)); e.status = r.status;
+    if(r.status === 429 && isGroqUrl(url)){
+      var ra = r.headers.get('retry-after'); e.retryAfter = ra ? parseFloat(ra) : 0;
+      e.message = 'Groq 已達流量上限（429）' + (e.retryAfter ? '，請等約 ' + Math.ceil(e.retryAfter) + ' 秒再試' : '，請稍後再試') + '。每日額度用完要等隔天重置。';
+    }
+    throw e;
+  }
   return JSON.parse(t);
+}
+function gqRender(){
+  var box = document.getElementById('x2quota'), chip = document.getElementById('gqChip');
+  var h = GQ.h, lines = [];
+  if(h && h['limit-requests']){
+    var lr = +h['limit-requests'], rr = +h['remaining-requests'];
+    lines.push('今日請求：剩 <b>' + rr + '</b> / ' + lr + ' 次（重置：' + (h['reset-requests'] || '—') + '）');
+  }
+  if(h && h['limit-tokens']){
+    lines.push('每分鐘字數(tokens)：剩 <b>' + h['remaining-tokens'] + '</b> / ' + h['limit-tokens'] + '（重置：' + (h['reset-tokens'] || '—') + '）');
+  }
+  lines.push('本機累計（今天，此瀏覽器）：' + GQ.req + ' 次請求、約 ' + GQ.tok + ' tokens');
+  if(!h) lines.push('<span style="opacity:.75">尚未取得伺服器回報的剩餘額度（按下方「更新剩餘額度」；若瀏覽器不開放讀取標頭，只會顯示本機累計。Groq 免費版 gpt-oss 約為 每分鐘 30 次／8K tokens、每天 1,000 次／20 萬 tokens）</span>');
+  if(box) box.innerHTML = lines.join('<br>');
+  if(chip){
+    var show = engineSel.value === 'openai' && (C.oaiPreset === 'groq' || /groq/i.test(C.oaiBase || ''));
+    chip.style.display = show ? '' : 'none';
+    chip.textContent = 'Groq ' + (h && h['remaining-requests'] != null ? '剩 ' + h['remaining-requests'] + ' 次' : '今日 ' + GQ.req + ' 次');
+  }
+}
+async function gqRefresh(){
+  var base = (C.oaiBase || '').replace(/\/+$/, '');
+  if(!isGroqUrl(base) || !C.oaiKey){ toast('請先在上方填 Groq 網址與金鑰', true); return; }
+  try{
+    await httpJson(base + '/chat/completions', {method: 'POST', headers: {'content-type': 'application/json', authorization: 'Bearer ' + C.oaiKey}, body: JSON.stringify({model: C.oaiModel, max_tokens: 1, messages: [{role: 'user', content: 'hi'}]})});
+    if(!GQ.h) toast('已連線，但瀏覽器沒有開放讀取剩餘額度標頭，只顯示本機累計', true);
+  }catch(e){ toast('更新失敗：' + (e.message || e), true); }
+  gqRender();
 }
 async function geminiJson(prompt, imgs){
   if(!C.gemKey) throw new Error('尚未設定 Gemini API 金鑰');
@@ -263,7 +315,8 @@ var UI = el(
  '<input type="text" id="x2oaiModel" placeholder="模型名稱" autocomplete="off" list="x2models"><datalist id="x2models"></datalist>' +
  '<label class="chk-line"><input type="checkbox" id="x2oaiVision"> 這個模型支援看圖（圖片／螢幕翻譯用）</label>' +
  '<div class="help">免費金鑰：' + link('https://console.groq.com/keys', 'Groq') + '、' + link('https://openrouter.ai/keys', 'OpenRouter') + '（模型名稱結尾是 :free 的免費）。Ollama 請填電腦的網址（例如 http://192.168.1.10:11434/v1），電腦要允許區域網路連線。</div>' +
- '<div class="btn-row"><button class="secondary" id="x2listOai">取得可用模型清單</button><button class="secondary" id="x2testOai">測試這個 API</button></div><div class="help" id="x2listOut"></div></div>' +
+ '<div class="btn-row"><button class="secondary" id="x2listOai">取得可用模型清單</button><button class="secondary" id="x2testOai">測試這個 API</button></div><div class="help" id="x2listOut"></div>'+
+ '<div class="note" id="x2quotaWrap"><b>📊 Groq 用量</b><div id="x2quota" style="margin-top:4px;line-height:1.7"></div><div class="btn-row" style="margin-top:6px"><button class="secondary" id="x2quotaBtn">更新剩餘額度</button></div></div></div>' +
 
  '<div class="field" id="x2deeplRow"><label class="lbl">DeepL API 金鑰（免費版每月 50 萬字，僅 APK 版可用）</label>' +
  '<input type="password" id="x2deeplKey" placeholder="xxxxxxxx-xxxx-...:fx" autocomplete="off">' +
@@ -316,6 +369,14 @@ async function testEngine(kind){
 }
 $x('x2testGem').addEventListener('click', function(){ testEngine('gem'); });
 $x('x2testOai').addEventListener('click', function(){ testEngine('oai'); });
+$x('x2quotaBtn').addEventListener('click', gqRefresh);
+(function(){
+  var chip = document.createElement('span'); chip.id = 'gqChip'; chip.className = 'status-pill ok'; chip.style.cssText = 'display:none;margin-left:6px;cursor:pointer';
+  chip.title = '點一下查看／更新 Groq 剩餘額度'; var pill = document.getElementById('engineStatus');
+  if(pill && pill.parentNode) pill.parentNode.insertBefore(chip, pill.nextSibling);
+  chip.addEventListener('click', function(){ if(typeof openSettings === 'function') openSettings(); var b = document.getElementById('x2quotaWrap'); if(b) setTimeout(function(){ b.scrollIntoView({block: 'center'}); }, 150); });
+  engineSel.addEventListener('change', gqRender); gqRender();
+})();
 $x('x2listOai').addEventListener('click', async function(){
   var out = $x('x2listOut'); save();
   var base = (C.oaiBase || '').replace(/\/+$/, '');

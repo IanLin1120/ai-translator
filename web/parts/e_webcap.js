@@ -210,5 +210,5 @@ function stop(silent){
   $('wcGo').textContent = '開始字幕'; btn.textContent = '🎙 即時字幕'; btn.classList.remove('danger');
 }
 btn.addEventListener('click', function(){ if(running){ stop(); mask.classList.remove('show'); } });
-window.WCAP = {start: start, stop: stop, running: function(){ return running; }};
+window.WCAP = {open: function(){ if(running) return; fill(); mask.classList.add('show'); }, start: start, stop: stop, running: function(){ return running; }};
 })();

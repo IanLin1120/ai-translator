@@ -95,6 +95,38 @@ engineSel.addEventListener('change', updateEnginePill);
       }
     }catch(e){ sampleFn = null; }
     try{ downloadsFn = await window.claude.use('downloads'); }catch(e){ downloadsFn = null; }
+    /* APK 內建橋接：App 在背景開著這個頁面，把翻譯請求轉給這裡，用 Claude 月訂閱額度處理（只有 App 才有 window.AITE） */
+    try{
+      if(window.AITE && sampleFn){
+        try{ window.AITE.ready(true); }catch(e){}
+        var bridgeBusy = false;
+        setInterval(async function(){
+          if(bridgeBusy) return;
+          var j = ''; try{ j = window.AITE.poll(); }catch(e){ return; }
+          if(!j) return;
+          bridgeBusy = true;
+          var r = null; try{ r = JSON.parse(j); }catch(e){ bridgeBusy = false; return; }
+          try{
+            var o = {modelTier: 'default'};
+            if(r.images && r.images.length){
+              o.images = r.images.map(function(x){
+                var bin = atob(x.b64), u8 = new Uint8Array(bin.length);
+                for(var k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+                return new Blob([u8], {type: x.mime || 'image/png'});
+              });
+            }
+            var v = await sampleFn.json(r.prompt, o);
+            window.AITE.res(r.id, true, JSON.stringify(v));
+          }catch(e){
+            var m = (e && e.message) ? e.message : String(e);
+            if(e && e.code === 'not_granted') m = '尚未授權：請在 App 設定開啟「Claude 訂閱版翻譯」頁面，翻譯一次並按「允許」。';
+            else if(e && e.code === 'rate_limited') m = '已達 Claude 訂閱用量或速率限制，請稍後再試。';
+            window.AITE.res(r.id, false, m);
+          }
+          bridgeBusy = false;
+        }, 400);
+      } else if(window.AITE){ try{ window.AITE.ready(false); }catch(e){} }
+    }catch(e){}
   }
   updateEnginePill();
 })();
