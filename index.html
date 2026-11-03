@@ -4,7 +4,7 @@
 <script>/* 線上更新開機程式：手機上若已下載比 APK 內建更新的介面版本，就改用新版（存在 IndexedDB）。
    新版連續兩次沒有正常開啟 → 自動退回 APK 內建版本。網址加上 #builtin 也會強制使用內建版本。 */
 (function () {
-  var B = '1.6.0'; if (!window.__OTA) window.APP_BUILTIN = B;
+  var B = '1.7.0'; if (!window.__OTA) window.APP_BUILTIN = B;
   if (window.__OTA || location.hash.indexOf('builtin') >= 0) return;
   var v = null; try { v = JSON.parse(localStorage.getItem('ait.ota') || 'null'); } catch (e) {}
   function gt(a, b) { a = String(a).split('.').map(Number); b = String(b).split('.').map(Number); for (var i = 0; i < Math.max(a.length, b.length); i++) { var p = a[i] || 0, q = b[i] || 0; if (p !== q) return p > q; } return false; }
@@ -318,6 +318,7 @@ input[type=range]{width:100%;accent-color:var(--accent,#a2613a)}
     <button class="btn" data-f="word">📄 Word</button>
     <button class="btn" data-f="pdf">📕 PDF</button>
     <button class="btn" data-f="mail">✉ 郵件</button>
+    <button class="btn" data-f="msg">🔁 MSG→EML</button>
   </div>
 <div class="card glass fpanel" data-f="image">
     <h3>圖片翻譯（OCR + AI 翻譯）</h3>
@@ -387,12 +388,24 @@ input[type=range]{width:100%;accent-color:var(--accent,#a2613a)}
     <div class="note">PDF 沒辦法像 Word／Excel 那樣直接改內文，所以會依原文的段落順序與字級，重建成可編輯的 Word 檔（僅翻譯版／中英夾雜版，每頁分頁）；複雜版面（多欄、圖文混排）不保證與原檔一模一樣。需要貼著原頁面的版面時，可勾選上方選項另外產生「版面一致的 HTML 複本」，再用瀏覽器「列印 → 另存為 PDF」。掃描檔（純圖片）無法擷取文字。</div>
   </div>
 
+<div class="card glass fpanel" data-f="msg">
+    <h3>MSG → EML 轉換</h3>
+    <p class="desc">把 Outlook 的 .msg 郵件轉成標準 .eml（保留主旨、寄件者、收件者、副本、日期、純文字與 HTML 內文、附件與內嵌圖片）。可一次選多個，全程在本機處理，不會上傳。</p>
+    <div class="dropzone" id="dzMsg">
+      <div class="big">點一下選擇 .msg 檔（可多選）或拖曳到這裡</div>
+      <div class="small">轉出的 .eml 可用 Outlook／Thunderbird／Apple 郵件開啟，也能到「郵件」頁翻譯</div>
+      <input type="file" id="fileMsg" accept=".msg" multiple style="display:none">
+    </div>
+    <div id="msgList"></div>
+    <div class="btn-row"><button class="secondary" id="btnMsgZip" disabled>全部打包下載 (.zip)</button></div>
+  </div>
+
 <div class="card glass fpanel" data-f="mail">
     <h3>Outlook 郵件翻譯</h3>
     <p class="desc">翻譯郵件主旨與內文，保留郵件標頭資訊（寄件者、收件者、時間）。</p>
     <div class="dropzone" id="dzMail">
-      <div class="big">點一下選擇郵件檔（.eml）</div>
-      <div class="small">.msg 請先在 Outlook 另存為 .eml</div>
+      <div class="big">點一下選擇郵件檔（.eml 或 .msg）</div>
+      <div class="small">.msg 會自動解析；翻譯後可輸出 .eml</div>
       <input type="file" id="fileMail" accept=".eml,.msg,.txt" style="display:none">
     </div>
     <div id="mailChip"></div>
@@ -402,7 +415,7 @@ input[type=range]{width:100%;accent-color:var(--accent,#a2613a)}
     </div>
     <div class="progress-wrap" id="pwMail"><div class="progress-bar"><div id="pbMail"></div></div><div class="progress-label" id="plMail"></div></div>
     <div class="result-box" id="resMail" style="display:none;"></div>
-    <div class="note">.msg 為 Outlook 專屬二進位格式，瀏覽器無法直接解析；本工具僅能嘗試擷取其中可讀文字，建議改用 .eml 以確保完整正確。</div>
+    <div class="note">.msg 已可完整解析（主旨、寄件者、收件者、內文）；翻譯結果可輸出為 .eml。要保留附件的完整郵件，請先用上一個「MSG→EML」轉換。</div>
   </div>
 </div></div></div>
 
@@ -1646,7 +1659,7 @@ async function aiTranslateBatch(texts, opts){
   var srcName = opts.sourceLang === 'auto' ? '（請自動偵測原文語言，原文可能夾雜多種語言）' : langName(opts.sourceLang);
   var tgtName = langName(opts.targetLang) + (/^zh-(TW|Hant)/i.test(opts.targetLang) ? '（台灣用語的繁體字；嚴禁輸出簡體字）' : '');
   var out = new Array(texts.length), failed = 0, needed = 0, lastErr = null;
-  var CHUNK = 40, CHARS = 4000, chunks = [], cur = [], curLen = 0, i;
+  var LIM = (window.AIT_LIMITS && window.AIT_LIMITS()) || {}, CHUNK = LIM.chunk || 40, CHARS = LIM.chars || 4000, chunks = [], cur = [], curLen = 0, i;
   for(i = 0; i < texts.length; i++){
     var t = texts[i] || '';
     if(cur.length >= CHUNK || (curLen + t.length) > CHARS){
@@ -1675,7 +1688,7 @@ async function aiTranslateBatch(texts, opts){
         catch(e){
           lastErr = e;
           var m = errMsg(e);
-          if((e && (e.code === 'not_granted' || e.code === 'rate_limited' || e.code === 'sampling_disabled')) || /狀態碼 (401|403|404|429)/.test(m)) break;
+          if((e && (e.code === 'cancel' || e.code === 'not_granted' || e.code === 'rate_limited' || e.code === 'sampling_disabled')) || /狀態碼 (401|403|404|429)/.test(m)) break;
           await sleep(700);
         }
       }
@@ -3005,7 +3018,13 @@ $('btnTransMail').addEventListener('click', async function(){
   try{
     var isMsg = /\.msg$/i.test(mailState.file.name);
     var headers = {from: '', to: '', cc: '', date: '', subject: ''}, body = '';
-    if(isMsg){ body = msgBestEffort(await mailState.file.arrayBuffer()); }
+    if(isMsg){
+      try{
+        var mm = MSGX.parse(await mailState.file.arrayBuffer()), fa = function(a){ return a ? (a.name && a.email ? a.name + ' <' + a.email + '>' : (a.email || a.name || '')) : ''; };
+        headers = {from: fa(mm.from), to: mm.to.map(fa).join(', ') || mm.toDisplay, cc: mm.cc.map(fa).join(', ') || mm.ccDisplay, date: mm.date ? mm.date.toString() : '', subject: mm.subject};
+        body = mm.text || (mm.html || '').replace(/<style[\s\S]*?<\/style>|<[^>]+>/gi, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+      }catch(e){ body = msgBestEffort(await mailState.file.arrayBuffer()); }
+    }
     else { var p = parseEmlFull(await mailState.file.text()); headers = p.headers; body = p.text; }
     if(!body.trim() && !headers.subject.trim()){ toast('無法從此檔案讀出郵件內容', true); btn.disabled = false; return; }
 
@@ -3046,7 +3065,7 @@ $('btnDlMail').addEventListener('click', function(){
   var r = mailState.res;
   if(!r) return;
   var formats = [txtFormat(r.lines)];
-  if(!r.isMsg && !IN_CLAUDE){
+  if(!IN_CLAUDE){
     formats.push({
       ext: '.eml', label: '郵件檔 (.eml)（僅譯文，可直接用 Outlook 開啟）', mime: 'message/rfc822',
       text: function(){ return buildEml(r.headers, r.subjT, buildTxt(r.segs, 'trans', {}, tgtSel.value)); }
@@ -3054,6 +3073,222 @@ $('btnDlMail').addEventListener('click', function(){
   }
   openExport({title: '匯出郵件翻譯', names: nameSet(baseName(mailState.file.name)), formats: formats});
 });
+
+/* ============================================================
+   MSG → EML：解析 Outlook .msg（OLE 複合檔）→ 標準 .eml（主旨／寄件者／收件者／副本／日期／
+   純文字與 HTML 內文／附件／內嵌圖片）。全部在本機瀏覽器內完成。
+   ============================================================ */
+/*MSG-START*/
+var MSGX = (function(){
+var CP = {950: 'big5', 936: 'gbk', 932: 'shift_jis', 949: 'euc-kr', 1252: 'windows-1252', 1251: 'windows-1251', 1250: 'windows-1250', 65001: 'utf-8', 28591: 'iso-8859-1', 20127: 'ascii'};
+function td(bytes, cp, fatal){ try{ return new TextDecoder(CP[cp] || 'windows-1252', {fatal: !!fatal}).decode(bytes); }catch(e){ return new TextDecoder('windows-1252').decode(bytes); } }
+function stripNul(s){ return s.replace(/\u0000+$/, ''); }
+function hex4(n){ return ('0000' + n.toString(16).toUpperCase()).slice(-4); }
+function Msg(buf){
+  var cfb = XLSX.CFB.read(new Uint8Array(buf), {type: 'array'}), S = {};
+  cfb.FullPaths.forEach(function(p, i){
+    var e = cfb.FileIndex[i]; if(!e || e.type !== 2) return;
+    S[p.replace(/^Root Entry\//, '')] = new Uint8Array(e.content || []);
+  });
+  this.S = S; this.cp = 1252;
+  var top = this.props(''); if(top[0x3FFD] != null) this.cp = top[0x3FFD];
+}
+Msg.prototype.props = function(prefix){
+  var b = this.S[prefix + '__properties_version1.0'], o = {};
+  if(!b) return o;
+  var start = prefix ? 8 : 32, dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  for(var p = start; p + 16 <= b.length; p += 16){
+    var type = dv.getUint16(p, true), id = dv.getUint16(p + 2, true);
+    if(type === 3) o[id] = dv.getInt32(p + 8, true);
+    else if(type === 0x40) o[id] = (dv.getUint32(p + 8, true) + dv.getUint32(p + 12, true) * 4294967296) / 1e4 - 11644473600000;
+    else if(type === 0xB) o[id] = dv.getUint16(p + 8, true) !== 0;
+  }
+  return o;
+};
+Msg.prototype.bin = function(prefix, id){
+  var k = prefix + '__substg1.0_' + hex4(id);
+  return this.S[k + '0102'] || null;
+};
+Msg.prototype.str = function(prefix, id){
+  var k = prefix + '__substg1.0_' + hex4(id), b;
+  if((b = this.S[k + '001F'])) return stripNul(new TextDecoder('utf-16le').decode(b));
+  if((b = this.S[k + '001E'])) return stripNul(td(b, this.cp));
+  return '';
+};
+Msg.prototype.prefixes = function(kind){
+  var re = new RegExp('^(__' + kind + '_version1\\.0_#[0-9A-Fa-f]{8}/)'), seen = {};
+  Object.keys(this.S).forEach(function(p){ var m = re.exec(p); if(m) seen[m[1]] = 1; });
+  return Object.keys(seen).sort();
+};
+/* LZFu（壓縮 RTF）解壓 —— 只在沒有純文字／HTML 時當最後手段 */
+function rtfDecompress(b){
+  if(!b || b.length < 16) return '';
+  var dv = new DataView(b.buffer, b.byteOffset, b.byteLength), comp = dv.getUint32(4, true), raw = dv.getUint32(8, true), sig = dv.getUint32(12, true);
+  if(sig === 0x414c454d) return td(b.subarray(16, 16 + raw), 1252);
+  if(sig !== 0x75465a4c) return '';
+  var dict = new Uint8Array(4096), init = '{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx';
+  for(var i = 0; i < init.length; i++) dict[i] = init.charCodeAt(i);
+  var w = init.length, out = [], p = 16, end = Math.min(b.length, comp + 4);
+  while(p < end && out.length < raw){
+    var ctl = b[p++];
+    for(var bit = 0; bit < 8 && p < end; bit++, ctl >>= 1){
+      if(ctl & 1){
+        var r = (b[p] << 8) | b[p + 1]; p += 2; var off = r >> 4, len = (r & 15) + 2;
+        if(off === (w & 4095)) return td(Uint8Array.from(out), 1252);
+        for(var k = 0; k < len; k++){ var c = dict[(off + k) & 4095]; out.push(c); dict[w & 4095] = c; w++; }
+      }else{ var c2 = b[p++]; out.push(c2); dict[w & 4095] = c2; w++; }
+    }
+  }
+  return td(Uint8Array.from(out), 1252);
+}
+function rtfToText(r){
+  return r.replace(/\{\\\*[^{}]*\}/g, '').replace(/\\par[d]?/g, '\n').replace(/\\tab/g, '\t').replace(/\\'([0-9a-f]{2})/gi, function(_, h){ return String.fromCharCode(parseInt(h, 16)); })
+    .replace(/\\[a-z]+-?\d* ?/gi, '').replace(/[{}]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+function parse(buf){
+  var m = new Msg(buf), top = m.props(''), out = {};
+  out.subject = m.str('', 0x37) || '';
+  out.from = {name: m.str('', 0xC1A), email: m.str('', 0x5D01) || m.str('', 0xC1F)};
+  if(out.from.email && !/@/.test(out.from.email)) out.from.email = '';
+  var rec = {1: [], 2: [], 3: []};
+  m.prefixes('recip').forEach(function(px){
+    var p = m.props(px), email = m.str(px, 0x39FE) || m.str(px, 0x3003);
+    if(email && !/@/.test(email)) email = '';
+    var name = m.str(px, 0x3001) || m.str(px, 0x3001);
+    (rec[p[0xC15]] || rec[1]).push({name: name, email: email});
+  });
+  out.to = rec[1]; out.cc = rec[2]; out.bcc = rec[3];
+  out.toDisplay = m.str('', 0xE04); out.ccDisplay = m.str('', 0xE03);
+  out.date = top[0x39] ? new Date(top[0x39]) : (top[0xE06] ? new Date(top[0xE06]) : null);
+  if(out.date && isNaN(out.date)) out.date = null;
+  out.headersRaw = m.str('', 0x7D);
+  var mid = /^Message-ID:\s*(.+)$/mi.exec(out.headersRaw); out.messageId = mid ? mid[1].trim() : '';
+  out.text = m.str('', 0x1000);
+  var hb = m.bin('', 0x1013); out.html = '';
+  if(hb){
+    var ic = top[0x3FDE] || top[0x3FFD] || 65001;
+    try{ out.html = td(hb, 65001, true); }catch(e){ out.html = td(hb, ic); }
+  }else out.html = m.str('', 0x1013);
+  if(!out.text && !out.html){ var rb = m.bin('', 0x1009); if(rb) out.text = rtfToText(rtfDecompress(rb)); }
+  out.atts = [];
+  m.prefixes('attach').forEach(function(px){
+    var p = m.props(px), data = m.bin(px, 0x3701);
+    if(!data){ if(p[0x3705] === 5) out.atts.push({name: (m.str(px, 0x3707) || m.str(px, 0x3704) || 'embedded') + '.msg', mime: 'application/vnd.ms-outlook', data: null, note: '內嵌的郵件附件（.msg）無法轉換，已略過'}); return; }
+    var name = m.str(px, 0x3707) || m.str(px, 0x3704) || m.str(px, 0x3001) || 'attachment';
+    out.atts.push({name: name, mime: m.str(px, 0x370E) || guessMime(name), cid: m.str(px, 0x3712), data: data, hidden: !!(p[0x7FFE])});
+  });
+  return out;
+}
+function guessMime(n){
+  var e = (/\.([a-z0-9]+)$/i.exec(n) || [])[1]; e = (e || '').toLowerCase();
+  return ({pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', txt: 'text/plain', csv: 'text/csv', htm: 'text/html', html: 'text/html',
+    doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zip: 'application/zip', ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'})[e] || 'application/octet-stream';
+}
+/* ---------- 組 EML ---------- */
+function b64(u8){
+  var s = '', CH = 0x8000;
+  for(var i = 0; i < u8.length; i += CH) s += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
+  return btoa(s).replace(/.{76}/g, '$&\r\n').replace(/\r\n$/, '');
+}
+function utf8(s){ return new TextEncoder().encode(s); }
+function encWord(s){
+  if(/^[\x20-\x7e]*$/.test(s)) return s;
+  var parts = [], cur = '';
+  Array.from(s).forEach(function(ch){ if(utf8(cur + ch).length > 36){ parts.push(cur); cur = ch; } else cur += ch; });
+  if(cur) parts.push(cur);
+  return parts.map(function(x){ return '=?UTF-8?B?' + b64(utf8(x)) + '?='; }).join('\r\n ');
+}
+function addr(a){
+  if(!a || (!a.email && !a.name)) return '';
+  if(!a.email) return encWord(a.name);
+  if(!a.name || a.name === a.email) return '<' + a.email + '>';
+  var n = /^[\x20-\x7e]*$/.test(a.name) ? '"' + a.name.replace(/(["\\])/g, '\\$1') + '"' : encWord(a.name);
+  return n + ' <' + a.email + '>';
+}
+function addrList(l){ return l.map(addr).filter(Boolean).join(',\r\n ');}
+function rfcDate(d){ return d.toUTCString().replace('GMT', '+0000'); }
+function textPart(type, body){ return 'Content-Type: ' + type + '; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n' + b64(utf8(body.replace(/\r?\n/g, '\r\n'))); }
+function multipart(kind, parts, bnd){ return {head: 'Content-Type: multipart/' + kind + '; boundary="' + bnd + '"', body: parts.map(function(p){ return '--' + bnd + '\r\n' + p; }).join('\r\n') + '\r\n--' + bnd + '--'}; }
+function toEml(m){
+  var rnd = Math.random().toString(36).slice(2, 10), L = [];
+  var from = addr(m.from); if(from) L.push('From: ' + from);
+  var to = addrList(m.to); if(to) L.push('To: ' + to); else if(m.toDisplay) L.push('To: ' + encWord(m.toDisplay));
+  var cc = addrList(m.cc); if(cc) L.push('Cc: ' + cc); else if(m.ccDisplay) L.push('Cc: ' + encWord(m.ccDisplay));
+  var bcc = addrList(m.bcc); if(bcc) L.push('Bcc: ' + bcc);
+  L.push('Subject: ' + encWord((m.subject || '').replace(/[\r\n]+/g, ' ')));
+  if(m.date) L.push('Date: ' + rfcDate(m.date));
+  if(m.messageId) L.push('Message-ID: ' + m.messageId);
+  L.push('MIME-Version: 1.0', 'X-Converted-From: Outlook .msg');
+  var regular = [], inline = [];
+  (m.atts || []).forEach(function(a){ if(!a.data) return; (a.cid && m.html && m.html.indexOf(a.cid) >= 0 ? inline : regular).push(a); });
+  function attPart(a, isInline){
+    var nm = encWord(a.name);
+    return 'Content-Type: ' + a.mime + '; name="' + nm + '"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: ' + (isInline ? 'inline' : 'attachment') +
+      '; filename="' + nm + '"' + (a.cid ? '\r\nContent-ID: <' + a.cid.replace(/^<|>$/g, '') + '>' : '') + '\r\n\r\n' + b64(a.data);
+  }
+  var body;                                                   /* {head, body} */
+  var plain = m.text || (m.html ? m.html.replace(/<style[\s\S]*?<\/style>|<[^>]+>/gi, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim() : '');
+  var htmlPart = null;
+  if(m.html){
+    var h = {head: 'Content-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64', body: b64(utf8(m.html.replace(/\r?\n/g, '\r\n')))};
+    if(inline.length){
+      var rel = multipart('related', [h.head + '\r\n\r\n' + h.body].concat(inline.map(function(a){ return attPart(a, true); })), '=_rel_' + rnd);
+      htmlPart = rel.head + '\r\n\r\n' + rel.body;
+    }else htmlPart = h.head + '\r\n\r\n' + h.body;
+  }
+  if(htmlPart){
+    var alt = multipart('alternative', [textPart('text/plain', plain), htmlPart], '=_alt_' + rnd);
+    body = alt;
+  }else body = {head: textPart('text/plain', plain).split('\r\n\r\n')[0], body: textPart('text/plain', plain).split('\r\n\r\n').slice(1).join('\r\n\r\n')};
+  if(regular.length){
+    var mix = multipart('mixed', [body.head + '\r\n\r\n' + body.body].concat(regular.map(function(a){ return attPart(a, false); })), '=_mix_' + rnd);
+    body = mix;
+  }
+  return L.join('\r\n') + '\r\n' + body.head + '\r\n\r\n' + body.body + '\r\n';
+}
+return {parse: parse, toEml: toEml, convert: function(buf){ var m = parse(buf); return {msg: m, eml: toEml(m)}; }};
+})();
+/*MSG-END*/
+
+/* ---------- 介面：MSG→EML 轉換面板 ---------- */
+(function(){
+var dz = document.getElementById('dzMsg'); if(!dz) return;
+var input = document.getElementById('fileMsg'), list = document.getElementById('msgList'), btnAll = document.getElementById('btnMsgZip');
+var done = [];
+function emlName(n){ return n.replace(/\.msg$/i, '') + '.eml'; }
+async function handle(files){
+  list.innerHTML = ''; done = []; btnAll.disabled = true;
+  for(var i = 0; i < files.length; i++){
+    var f = files[i], row = document.createElement('div'); row.className = 'msg-row';
+    row.style.cssText = 'padding:8px 0;border-bottom:1px dashed var(--border-soft,#b3a377);font-size:14px;line-height:1.6';
+    list.appendChild(row);
+    try{
+      if(!/\.msg$/i.test(f.name)) throw new Error('不是 .msg 檔');
+      var r = MSGX.convert(await f.arrayBuffer()), m = r.msg;
+      var blob = new Blob([r.eml], {type: 'message/rfc822'}), name = emlName(f.name);
+      done.push({name: name, blob: blob});
+      var skipped = (m.atts || []).filter(function(a){ return !a.data; }).length;
+      row.innerHTML = '✅ <b>' + escapeXml(f.name) + '</b> → ' + escapeXml(name) + '<br><span style="opacity:.8">主旨：' + escapeXml(m.subject || '（無）') + '｜寄件者：' + escapeXml((m.from.name || '') + ' ' + (m.from.email ? '<' + m.from.email + '>' : '')) +
+        '｜收件者 ' + m.to.length + ' 人｜附件 ' + ((m.atts || []).length - skipped) + ' 個' + (skipped ? '（' + skipped + ' 個內嵌郵件未轉換）' : '') + '</span>';
+      var b = document.createElement('button'); b.className = 'secondary'; b.textContent = '下載 .eml'; b.style.marginLeft = '8px';
+      b.addEventListener('click', function(n, bl){ return function(){ saveFile(n, bl, 'message/rfc822'); }; }(name, blob)); row.appendChild(b);
+    }catch(e){ row.innerHTML = '❌ <b>' + escapeXml(f.name) + '</b>：' + escapeXml((e && e.message) || String(e)); }
+  }
+  btnAll.disabled = done.length < 2;
+  if(done.length) toast('已轉換 ' + done.length + ' 封郵件');
+}
+dz.addEventListener('click', function(){ input.click(); });
+input.addEventListener('change', function(){ if(input.files.length) handle(Array.prototype.slice.call(input.files)); input.value = ''; });
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files.length) handle(Array.prototype.slice.call(e.dataTransfer.files)); });
+btnAll.addEventListener('click', async function(){
+  var z = new JSZip(); done.forEach(function(d){ z.file(d.name, d.blob); });
+  saveFile('msg轉eml.zip', await z.generateAsync({type: 'blob'}), 'application/zip');
+});
+})();
 
 
 /* ============================================================
@@ -4000,6 +4235,115 @@ updateEnginePill();
 })();
 
 /* ============================================================
+   Claude 月訂閱「複製貼上橋接」（網頁版／離線版用）
+   瀏覽器不允許一般網頁直接借用 Claude 月訂閱，所以用最穩的方式：
+   本頁把「翻譯任務」打包成一段文字 → 你貼到 Claude（線上版橋接接收區，或一般 claude.ai 對話）→ 把結果貼回來。
+   文字、圖片以外的 Excel／Word／PDF／郵件全部都能用，且會自動把任務切成較大的段落減少來回次數。
+   在 Claude.ai 裡的線上版另有「橋接接收區」：貼上任務 → 用訂閱翻譯 → 一鍵複製結果。
+   ============================================================ */
+(function(){
+var APK = !!(window.AIT && typeof window.AIT.version === 'function');
+if(APK) return;
+var $s = function(id){ return document.getElementById(id); };
+var ARTIFACT = 'https://claude.ai/artifact/GrGKSNbfMi5K2saoWNStz9';
+var HEAD = '【AIT 翻譯任務】請完全照下面的指示處理，只回傳 JSON，不要任何說明、標題或 markdown 標記。\n\n';
+
+function copyText(t){
+  return (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject()).catch(function(){
+    var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-999px'; document.body.appendChild(ta); ta.select();
+    var ok = false; try{ ok = document.execCommand('copy'); }catch(e){} ta.remove(); if(!ok) throw new Error('copy');
+  });
+}
+
+/* ---------- 一般網頁／離線版：橋接對話框 ---------- */
+if(!IN_CLAUDE){
+  var o = document.createElement('option'); o.value = 'subpaste'; o.textContent = 'Claude 月訂閱（複製貼上橋接）';
+  engineSel.appendChild(o);
+  window.AIT_LIMITS = function(){ return engineSel.value === 'subpaste' ? {chunk: 120, chars: 9000} : null; };
+  var mask = document.createElement('div'); mask.className = 'modal-mask'; mask.id = 'subMask'; mask.style.zIndex = 1200;
+  mask.innerHTML = '<div class="modal-box wide"><h3 id="subTitle">🔗 Claude 月訂閱橋接</h3>' +
+    '<div class="note" style="line-height:1.7">① 按「複製任務」　② 到 Claude 貼上（<a href="#" id="subOpen">開啟 Claude 線上版橋接區</a> 或直接貼到 claude.ai 一般對話，兩種都行）　③ 把 Claude 回的結果複製回來貼在下面，按「套用結果」。</div>' +
+    '<div class="field"><label class="lbl">任務（要貼給 Claude）<span id="subSize" style="opacity:.7"></span></label><textarea id="subJob" readonly rows="4" style="width:100%"></textarea></div>' +
+    '<div class="btn-row"><button class="primary" id="subCopy">📋 複製任務</button><button class="secondary" id="subOpen2">☁ 開啟 Claude</button></div>' +
+    '<div class="field"><label class="lbl">Claude 回傳的結果（貼在這裡，貼上後會自動套用）</label><textarea id="subRes" rows="5" style="width:100%" placeholder="貼上 Claude 的回覆（JSON）…"></textarea></div>' +
+    '<div id="subErr" class="note err" style="display:none"></div>' +
+    '<div class="btn-row"><button class="olive" id="subApply">✅ 套用結果</button><button class="secondary" id="subPaste">📋 從剪貼簿貼上</button><button class="secondary" id="subCancel">取消</button></div></div>';
+  document.body.appendChild(mask);
+  var cur = null, seq = 0, total = 0;
+  function openClaude(){ var u = (typeof lsGet === 'function' && lsGet('ait.claudeUrl', '')) || ARTIFACT; if(!/^https:\/\/claude\.ai\//.test(u)) u = ARTIFACT; window.open(u, '_blank', 'noopener'); }
+  $s('subOpen').addEventListener('click', function(e){ e.preventDefault(); openClaude(); });
+  $s('subOpen2').addEventListener('click', openClaude);
+  $s('subCopy').addEventListener('click', function(){ copyText($s('subJob').value).then(function(){ toast('✓ 已複製任務，到 Claude 貼上'); }).catch(function(){ $s('subJob').select(); toast('請手動全選複製', true); }); });
+  function tryApply(){
+    if(!cur) return;
+    var t = $s('subRes').value.trim(); if(!t) return;
+    try{ var v = parseJsonLoose(t); if(v == null) throw new Error('empty'); var c = cur; cur = null; mask.classList.remove('show'); c.ok(v); }
+    catch(e){ var er = $s('subErr'); er.style.display = 'block'; er.textContent = '這段內容不是有效的 JSON，請確認有完整複製 Claude 的整段回覆（含最前面的 [ 到最後面的 ]）。'; }
+  }
+  $s('subApply').addEventListener('click', tryApply);
+  $s('subRes').addEventListener('paste', function(){ setTimeout(tryApply, 60); });
+  $s('subPaste').addEventListener('click', function(){
+    if(!(navigator.clipboard && navigator.clipboard.readText)){ toast('此瀏覽器不能自動讀剪貼簿，請在欄位內長按／Ctrl+V 貼上', true); return; }
+    navigator.clipboard.readText().then(function(t){ $s('subRes').value = t; tryApply(); }).catch(function(){ toast('沒有讀取剪貼簿的權限，請直接在欄位內貼上', true); });
+  });
+  $s('subCancel').addEventListener('click', function(){ if(!cur) return; var c = cur; cur = null; mask.classList.remove('show'); var e = new Error('已取消橋接翻譯'); e.code = 'cancel'; c.no(e); });
+  window.subBridge = function(prompt){
+    return new Promise(function(ok, no){
+      seq++; cur = {ok: ok, no: no};
+      var job = HEAD + prompt;
+      $s('subTitle').textContent = '🔗 Claude 月訂閱橋接（第 ' + seq + ' 段）';
+      $s('subJob').value = job; $s('subSize').textContent = '　約 ' + job.length + ' 字';
+      $s('subRes').value = ''; $s('subErr').style.display = 'none'; mask.classList.add('show');
+    });
+  };
+  var _aa = aiAvailable, _ai = aiImagesAvailable, _cj = callAIJson, _up = updateEnginePill, _tb = translateBatch;
+  aiAvailable = function(){ return engineSel.value === 'subpaste' ? true : _aa(); };
+  aiImagesAvailable = function(){ return engineSel.value === 'subpaste' ? false : _ai(); };
+  callAIJson = function(prompt, imgs){ return engineSel.value === 'subpaste' ? window.subBridge(prompt) : _cj(prompt, imgs); };
+  translateBatch = async function(texts, opts){ if(engineSel.value === 'subpaste') seq = 0; return _tb(texts, opts); };
+  updateEnginePill = function(){
+    if(engineSel.value === 'subpaste'){ enginePill.textContent = 'Claude 月訂閱（貼上橋接）'; enginePill.className = 'status-pill ok'; return; }
+    _up();
+  };
+  engineSel.addEventListener('change', updateEnginePill);
+  updateEnginePill();
+}
+
+/* ---------- Claude.ai 線上版：橋接接收區 ---------- */
+if(IN_CLAUDE){
+  var host = document.getElementById('p-trans') || document.querySelector('.page');
+  if(host){
+    var card = document.createElement('div'); card.className = 'card glass'; card.id = 'cardBridge';
+    card.innerHTML = '<h3>🔗 橋接接收區（用 Claude 月訂閱翻譯別處貼來的任務）</h3>' +
+      '<p class="desc">離線版／GitHub 網頁版選「Claude 月訂閱（複製貼上橋接）」會產生任務文字，貼在這裡，用你的月訂閱額度翻譯，再一鍵複製結果貼回去。</p>' +
+      '<textarea id="brJob" rows="4" style="width:100%" placeholder="貼上任務文字…"></textarea>' +
+      '<div class="btn-row"><button class="primary" id="brRun">▶ 用 Claude 訂閱翻譯</button><button class="secondary" id="brClear">清除</button></div>' +
+      '<div class="progress-label" id="brSt" style="margin:6px 0"></div>' +
+      '<textarea id="brRes" rows="4" style="width:100%" readonly placeholder="翻譯結果（JSON）會顯示在這裡"></textarea>' +
+      '<div class="btn-row"><button class="olive" id="brCopy" disabled>📋 複製結果</button></div>';
+    host.insertBefore(card, host.firstChild);
+    $s('brClear').addEventListener('click', function(){ $s('brJob').value = ''; $s('brRes').value = ''; $s('brSt').textContent = ''; $s('brCopy').disabled = true; });
+    $s('brRun').addEventListener('click', async function(){
+      var job = $s('brJob').value.trim();
+      if(!job){ toast('請先貼上任務文字', true); return; }
+      if(!sampleFn){ toast('這個頁面尚未取得使用 Claude 的授權（請按允許）', true); return; }
+      var b = this; b.disabled = true; $s('brSt').textContent = '翻譯中…'; $s('brCopy').disabled = true; $s('brRes').value = '';
+      try{
+        var v = await sampleFn.json(job.replace(/^【AIT 翻譯任務】[^\n]*\n+/, ''), {modelTier: 'default'});
+        $s('brRes').value = JSON.stringify(v); $s('brSt').textContent = '完成，按「複製結果」後回到原本的頁面貼上。'; $s('brCopy').disabled = false;
+      }catch(e){
+        var m = (e && e.message) ? e.message : String(e);
+        if(e && e.code === 'rate_limited') m = '已達 Claude 訂閱用量或速率限制，請稍後再試。';
+        $s('brSt').textContent = '失敗：' + m;
+      }
+      b.disabled = false;
+    });
+    $s('brCopy').addEventListener('click', function(){ copyText($s('brRes').value).then(function(){ toast('✓ 已複製結果'); }).catch(function(){ $s('brRes').select(); toast('請手動全選複製', true); }); });
+  }
+}
+})();
+
+/* ============================================================
    簡體→繁體（台灣用語）保險：目標語言是繁體中文時，所有引擎的翻譯結果都再過一次 OpenCC，
    避免模型偶爾輸出簡體字。原文不動，只轉換「有被翻譯」的結果。
    ============================================================ */
@@ -4249,7 +4593,7 @@ window.WCAP = {open: function(){ if(running) return; fill(); mask.classList.add(
 /* ============================================================
    MOBILE GLUE — 導覽、設定頁、原生橋接、版本與更新、懸浮翻譯控制
    ============================================================ */
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 var GH = {user: 'IanLin1120', repo: 'ai-translator',
   get pages(){ return 'https://' + this.user.toLowerCase() + '.github.io/' + this.repo + '/'; },
   get web(){ return 'https://github.com/' + this.user + '/' + this.repo; }};
@@ -4873,7 +5217,7 @@ var cc = ws('cardClaude');
 if(cc){
   var d = cc.querySelector('.desc');
   if(d && IN_CLAUDE) d.innerHTML = '✅ 你正在 Claude.ai 裡：把「翻譯引擎」選成 <b>AI 翻譯（Claude）</b>，就會用你的 Claude 月訂閱額度翻譯，不需 API 金鑰（第一次按「允許」）。Groq／Gemini 等外部服務在這裡會被 Claude.ai 的安全政策擋住，要用請開 GitHub 網頁版或離線檔。';
-  else if(d) d.innerHTML = 'Claude 月訂閱只能在 <b>claude.ai 裡的線上版（artifact）</b>或 <b>APK</b> 使用：在線上版的「翻譯引擎」選 <b>AI 翻譯（Claude）</b> 即可，不需 API 金鑰。這個獨立網頁／離線檔受瀏覽器安全限制無法借用訂閱，請改用 Groq／Gemini 等免費金鑰，或按下面開啟 claude.ai。';
+  else if(d) d.innerHTML = '用 <b>Claude 月訂閱</b>翻譯（不用 API 金鑰）：在「翻譯引擎」選 <b>Claude 月訂閱（複製貼上橋接）</b>。網頁不能像 APK 一樣在背景自動開線上版（瀏覽器安全限制），所以改成：本頁產生任務 → 貼到 Claude 線上版的「橋接接收區」→ 複製結果貼回來。文字、Excel、Word、PDF、郵件都能用，任務會合併成較大的段落，來回次數很少。';
 }
 })();
 
