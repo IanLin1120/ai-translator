@@ -21,7 +21,13 @@ $('btnTransMail').addEventListener('click', async function(){
   try{
     var isMsg = /\.msg$/i.test(mailState.file.name);
     var headers = {from: '', to: '', cc: '', date: '', subject: ''}, body = '';
-    if(isMsg){ body = msgBestEffort(await mailState.file.arrayBuffer()); }
+    if(isMsg){
+      try{
+        var mm = MSGX.parse(await mailState.file.arrayBuffer()), fa = function(a){ return a ? (a.name && a.email ? a.name + ' <' + a.email + '>' : (a.email || a.name || '')) : ''; };
+        headers = {from: fa(mm.from), to: mm.to.map(fa).join(', ') || mm.toDisplay, cc: mm.cc.map(fa).join(', ') || mm.ccDisplay, date: mm.date ? mm.date.toString() : '', subject: mm.subject};
+        body = mm.text || (mm.html || '').replace(/<style[\s\S]*?<\/style>|<[^>]+>/gi, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+      }catch(e){ body = msgBestEffort(await mailState.file.arrayBuffer()); }
+    }
     else { var p = parseEmlFull(await mailState.file.text()); headers = p.headers; body = p.text; }
     if(!body.trim() && !headers.subject.trim()){ toast('無法從此檔案讀出郵件內容', true); btn.disabled = false; return; }
 
@@ -62,7 +68,7 @@ $('btnDlMail').addEventListener('click', function(){
   var r = mailState.res;
   if(!r) return;
   var formats = [txtFormat(r.lines)];
-  if(!r.isMsg && !IN_CLAUDE){
+  if(!IN_CLAUDE){
     formats.push({
       ext: '.eml', label: '郵件檔 (.eml)（僅譯文，可直接用 Outlook 開啟）', mime: 'message/rfc822',
       text: function(){ return buildEml(r.headers, r.subjT, buildTxt(r.segs, 'trans', {}, tgtSel.value)); }

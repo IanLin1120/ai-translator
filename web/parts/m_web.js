@@ -27,6 +27,6 @@ var cc = ws('cardClaude');
 if(cc){
   var d = cc.querySelector('.desc');
   if(d && IN_CLAUDE) d.innerHTML = '✅ 你正在 Claude.ai 裡：把「翻譯引擎」選成 <b>AI 翻譯（Claude）</b>，就會用你的 Claude 月訂閱額度翻譯，不需 API 金鑰（第一次按「允許」）。Groq／Gemini 等外部服務在這裡會被 Claude.ai 的安全政策擋住，要用請開 GitHub 網頁版或離線檔。';
-  else if(d) d.innerHTML = 'Claude 月訂閱只能在 <b>claude.ai 裡的線上版（artifact）</b>或 <b>APK</b> 使用：在線上版的「翻譯引擎」選 <b>AI 翻譯（Claude）</b> 即可，不需 API 金鑰。這個獨立網頁／離線檔受瀏覽器安全限制無法借用訂閱，請改用 Groq／Gemini 等免費金鑰，或按下面開啟 claude.ai。';
+  else if(d) d.innerHTML = '用 <b>Claude 月訂閱</b>翻譯（不用 API 金鑰）：在「翻譯引擎」選 <b>Claude 月訂閱（複製貼上橋接）</b>。網頁不能像 APK 一樣在背景自動開線上版（瀏覽器安全限制），所以改成：本頁產生任務 → 貼到 Claude 線上版的「橋接接收區」→ 複製結果貼回來。文字、Excel、Word、PDF、郵件都能用，任務會合併成較大的段落，來回次數很少。';
 }
 })();

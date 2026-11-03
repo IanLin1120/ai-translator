@@ -55,6 +55,7 @@
     <button class="btn" data-f="word">📄 Word</button>
     <button class="btn" data-f="pdf">📕 PDF</button>
     <button class="btn" data-f="mail">✉ 郵件</button>
+    <button class="btn" data-f="msg">🔁 MSG→EML</button>
   </div>
 <div class="card glass fpanel" data-f="image">
     <h3>圖片翻譯（OCR + AI 翻譯）</h3>
@@ -124,12 +125,24 @@
     <div class="note">PDF 沒辦法像 Word／Excel 那樣直接改內文，所以會依原文的段落順序與字級，重建成可編輯的 Word 檔（僅翻譯版／中英夾雜版，每頁分頁）；複雜版面（多欄、圖文混排）不保證與原檔一模一樣。需要貼著原頁面的版面時，可勾選上方選項另外產生「版面一致的 HTML 複本」，再用瀏覽器「列印 → 另存為 PDF」。掃描檔（純圖片）無法擷取文字。</div>
   </div>
 
+<div class="card glass fpanel" data-f="msg">
+    <h3>MSG → EML 轉換</h3>
+    <p class="desc">把 Outlook 的 .msg 郵件轉成標準 .eml（保留主旨、寄件者、收件者、副本、日期、純文字與 HTML 內文、附件與內嵌圖片）。可一次選多個，全程在本機處理，不會上傳。</p>
+    <div class="dropzone" id="dzMsg">
+      <div class="big">點一下選擇 .msg 檔（可多選）或拖曳到這裡</div>
+      <div class="small">轉出的 .eml 可用 Outlook／Thunderbird／Apple 郵件開啟，也能到「郵件」頁翻譯</div>
+      <input type="file" id="fileMsg" accept=".msg" multiple style="display:none">
+    </div>
+    <div id="msgList"></div>
+    <div class="btn-row"><button class="secondary" id="btnMsgZip" disabled>全部打包下載 (.zip)</button></div>
+  </div>
+
 <div class="card glass fpanel" data-f="mail">
     <h3>Outlook 郵件翻譯</h3>
     <p class="desc">翻譯郵件主旨與內文，保留郵件標頭資訊（寄件者、收件者、時間）。</p>
     <div class="dropzone" id="dzMail">
-      <div class="big">點一下選擇郵件檔（.eml）</div>
-      <div class="small">.msg 請先在 Outlook 另存為 .eml</div>
+      <div class="big">點一下選擇郵件檔（.eml 或 .msg）</div>
+      <div class="small">.msg 會自動解析；翻譯後可輸出 .eml</div>
       <input type="file" id="fileMail" accept=".eml,.msg,.txt" style="display:none">
     </div>
     <div id="mailChip"></div>
@@ -139,7 +152,7 @@
     </div>
     <div class="progress-wrap" id="pwMail"><div class="progress-bar"><div id="pbMail"></div></div><div class="progress-label" id="plMail"></div></div>
     <div class="result-box" id="resMail" style="display:none;"></div>
-    <div class="note">.msg 為 Outlook 專屬二進位格式，瀏覽器無法直接解析；本工具僅能嘗試擷取其中可讀文字，建議改用 .eml 以確保完整正確。</div>
+    <div class="note">.msg 已可完整解析（主旨、寄件者、收件者、內文）；翻譯結果可輸出為 .eml。要保留附件的完整郵件，請先用上一個「MSG→EML」轉換。</div>
   </div>
 </div></div></div>
 

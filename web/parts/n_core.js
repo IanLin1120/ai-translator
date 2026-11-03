@@ -209,7 +209,7 @@ async function aiTranslateBatch(texts, opts){
   var srcName = opts.sourceLang === 'auto' ? '（請自動偵測原文語言，原文可能夾雜多種語言）' : langName(opts.sourceLang);
   var tgtName = langName(opts.targetLang) + (/^zh-(TW|Hant)/i.test(opts.targetLang) ? '（台灣用語的繁體字；嚴禁輸出簡體字）' : '');
   var out = new Array(texts.length), failed = 0, needed = 0, lastErr = null;
-  var CHUNK = 40, CHARS = 4000, chunks = [], cur = [], curLen = 0, i;
+  var LIM = (window.AIT_LIMITS && window.AIT_LIMITS()) || {}, CHUNK = LIM.chunk || 40, CHARS = LIM.chars || 4000, chunks = [], cur = [], curLen = 0, i;
   for(i = 0; i < texts.length; i++){
     var t = texts[i] || '';
     if(cur.length >= CHUNK || (curLen + t.length) > CHARS){
@@ -238,7 +238,7 @@ async function aiTranslateBatch(texts, opts){
         catch(e){
           lastErr = e;
           var m = errMsg(e);
-          if((e && (e.code === 'not_granted' || e.code === 'rate_limited' || e.code === 'sampling_disabled')) || /狀態碼 (401|403|404|429)/.test(m)) break;
+          if((e && (e.code === 'cancel' || e.code === 'not_granted' || e.code === 'rate_limited' || e.code === 'sampling_disabled')) || /狀態碼 (401|403|404|429)/.test(m)) break;
           await sleep(700);
         }
       }
