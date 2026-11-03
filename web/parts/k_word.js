@@ -143,38 +143,22 @@ document.getElementById('btnTransWord').addEventListener('click', async function
   if(!textEngineReady()){ engineNotReady(); return; }
   var btn = this; btn.disabled = true;
   try{
+    if(!/\.docx$/i.test(wordState.file.name)){ toast('目前只支援 .docx，舊版 .doc 請先用 Word 另存為 .docx', true); btn.disabled = false; return; }
     var buf = await wordState.file.arrayBuffer();
-    var result = await mammoth.convertToHtml({arrayBuffer: buf});
-    var container = document.createElement('div');
-    container.innerHTML = result.value;
-    var textNodes = collectTextNodes(container);
-    var texts = textNodes.map(function(n){ return n.nodeValue; });
-    if(!texts.length){
-      toast('此檔案中沒有可翻譯的文字內容', true);
-      btn.disabled = false; return;
-    }
-    var out = await translateBatch(texts, {
-      sourceLang: srcSel.value, targetLang: tgtSel.value,
-      onProgress: function(d,t){ progress('Word', d, t); }
-    });
-    textNodes.forEach(function(n, idx){ n.nodeValue = out[idx]; });
-    var blob = await buildDocxFromHtml(container);
-    wordState.outBlob = blob;
+    progress('Word', 0, 1, '分析檔案中');
+    var r = await XMLF.docx(buf, xmlTranslateFn('Word'), ['trans', 'both']);
+    if(!r.count){ toast('此檔案中沒有可翻譯的文字內容', true); progressDone('Word', '沒有可翻譯的文字'); btn.disabled = false; return; }
+    wordState.outFiles = r.files;
     document.getElementById('btnDlWord').disabled = false;
-    progressDone('Word','翻譯完成，共處理 '+texts.length+' 個段落');
+    progressDone('Word', '翻譯完成，共處理 ' + r.count + ' 個段落（版面、字型、表格、圖片、頁首頁尾皆保留）');
   }catch(e){
     console.error(e);
-    toast('處理失敗：'+errMsg(e), true);
-    progressDone('Word','發生錯誤');
+    toast('處理失敗：' + errMsg(e), true);
+    progressDone('Word', '發生錯誤');
   }
   btn.disabled = false;
 });
 document.getElementById('btnDlWord').addEventListener('click', async function(){
-  if(!wordState.outBlob) return;
-  openExport({
-    title:'匯出 Word',
-    names:{trans: baseName(wordState.file.name)+'-'+langFile(tgtSel.value)},
-    formats:[{ext:'.docx', label:'Word 文件 (.docx)', blob: wordState.outBlob}]
-  });
+  if(!wordState.outFiles) return;
+  twoModeExport('匯出 Word', '.docx', 'Word 文件 (.docx)，保留原始格式', wordState.file, wordState.outFiles);
 });
-

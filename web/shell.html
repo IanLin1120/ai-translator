@@ -75,11 +75,11 @@
 
 <div class="card glass fpanel" data-f="excel">
     <h3>Excel 翻譯</h3>
-    <p class="desc">保留原始活頁簿結構、公式與儲存格配置，僅翻譯文字內容。輸出檔名會加上語言後綴，例如「客戶資料-中文.xlsx」。</p>
+    <p class="desc">直接修改檔案內部資料，只換文字：格式、欄寬、公式、表格、圖表、圖片全部原樣保留。一次產生「僅翻譯版」與「中英夾雜版」（儲存格內一段原文、下方一段譯文）。</p>
     <div class="dropzone" id="dzExcel">
-      <div class="big">點一下選擇 Excel 檔（.xlsx / .xls / .csv）</div>
+      <div class="big">點一下選擇 Excel 檔（.xlsx / .xlsm）</div>
       <div class="small">支援多工作表</div>
-      <input type="file" id="fileExcel" accept=".xlsx,.xls,.csv" style="display:none">
+      <input type="file" id="fileExcel" accept=".xlsx,.xlsm" style="display:none">
     </div>
     <div id="excelChip"></div>
     <div class="btn-row">
@@ -92,7 +92,7 @@
 
 <div class="card glass fpanel" data-f="word">
     <h3>Word 翻譯</h3>
-    <p class="desc">保留段落、標題、粗體 / 斜體 / 底線、清單與表格結構，翻譯內文文字，輸出為新的 .docx。</p>
+    <p class="desc">直接修改檔案內部資料，只換文字：段落樣式、字型、表格、清單、圖片、頁首頁尾全部原樣保留。一次產生「僅翻譯版」與「中英夾雜版」（每段原文下方接一段譯文）。</p>
     <div class="dropzone" id="dzWord">
       <div class="big">點一下選擇 Word 檔（.docx）</div>
       <div class="small">舊版 .doc 請先於 Word 另存為 .docx</div>
@@ -121,7 +121,7 @@
       <button class="secondary" id="btnDlPdf" disabled>匯出（可自訂檔名）…</button>
     </div>
     <div class="progress-wrap" id="pwPdf"><div class="progress-bar"><div id="pbPdf"></div></div><div class="progress-label" id="plPdf"></div></div>
-    <div class="note">因瀏覽器產生的 PDF 缺乏完整中日韓字型，本工具會輸出「版面一致的 HTML 複本」；若需要 .pdf 檔，開啟後用瀏覽器的「列印 → 另存為 PDF」即可轉存，版面會與原始 PDF 一致。</div>
+    <div class="note">PDF 沒辦法像 Word／Excel 那樣直接改內文，所以會依原文的段落順序與字級，重建成可編輯的 Word 檔（僅翻譯版／中英夾雜版，每頁分頁）；複雜版面（多欄、圖文混排）不保證與原檔一模一樣。需要貼著原頁面的版面時，可勾選上方選項另外產生「版面一致的 HTML 複本」，再用瀏覽器「列印 → 另存為 PDF」。掃描檔（純圖片）無法擷取文字。</div>
   </div>
 
 <div class="card glass fpanel" data-f="mail">

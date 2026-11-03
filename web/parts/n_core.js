@@ -480,10 +480,10 @@ function exRefresh(resetName){
     var lab = document.createElement('label'); lab.className = 'opt' + (m === EX.mode ? ' on' : '');
     var r = document.createElement('input'); r.type = 'radio'; r.name = 'exMode'; r.value = m; r.checked = (m === EX.mode);
     r.addEventListener('change', function(){ EX.mode = m; exRefresh(!EX.touched); });
-    lab.appendChild(r); lab.appendChild(document.createTextNode(' ' + EX_MODES[m]));
+    lab.appendChild(r); lab.appendChild(document.createTextNode(' ' + ((f.modeLabels && f.modeLabels[m]) || EX_MODES[m])));
     box.appendChild(lab);
   });
-  $('exBothOpts').style.display = (modes && EX.mode === 'both') ? '' : 'none';
+  $('exBothOpts').style.display = (modes && EX.mode === 'both' && f.text) ? '' : 'none';
   $('exExt').textContent = f.ext;
   if(resetName) $('exName').value = EX.cfg.names[EX.mode] || EX.cfg.names.trans || '翻譯結果';
   var pw = $('exPreviewWrap');
@@ -506,7 +506,8 @@ $('exPrefix').addEventListener('input', function(){ exRefresh(false); });
 $('exCancel').addEventListener('click', closeExport);
 $('exOk').addEventListener('click', async function(){
   var f = exFmt(), name = safeFileName($('exName').value, f.ext), data;
-  if(f.blob){ data = f.blob; }
+  if(f.blobs){ data = f.blobs[EX.mode] || f.blobs.trans; }
+  else if(f.blob){ data = f.blob; }
   else {
     var txt = f.text(EX.mode, exOpts());
     data = new Blob([(f.bom ? '﻿' : '') + txt], {type: f.mime || 'text/plain;charset=utf-8'});
