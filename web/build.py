@@ -4,11 +4,11 @@ import os, json, sys
 here = os.path.dirname(os.path.abspath(__file__))
 ver = os.environ.get('VER') or open(os.path.join(here, '..', 'VERSION')).read().strip()
 R = lambda *p: open(os.path.join(here, *p), encoding='utf-8').read()
-order = ['k_theme_lang', 'n_pure', 'n_core', 'k_helpers', 'k_xmlfmt', 'n_tabs', 'k_dropzone', 'n_image', 'k_excel', 'k_word', 'k_pdf', 'n_mail', 'n_screen', 'e_engines', 'e_webcap', 'm_glue', 'm_web']
+order = ['k_theme_lang', 'n_pure', 'n_core', 'k_helpers', 'k_xmlfmt', 'n_tabs', 'k_dropzone', 'n_image', 'k_excel', 'k_word', 'k_pdf', 'n_mail', 'n_screen', 'e_opus', 'e_engines', 'k_s2t', 'e_webcap', 'm_glue', 'm_web']
 app = '\n'.join(R('parts', n + '.js') for n in order).replace('__VER__', ver)
 def inline(src):            # 避免 </script> 提早結束標籤
     return src.replace('</script', '<\\/script')
-vend = ''.join('<script>' + inline(R('vendor', n + '.js')) + '</script>\n' for n in ['jszip', 'xlsx', 'mammoth', 'pdf'])
+vend = ''.join('<script>' + inline(R('vendor', n + '.js')) + '</script>\n' for n in ['jszip', 'xlsx', 'mammoth', 'pdf', 'opencc'])
 worker = json.dumps(R('vendor', 'pdf.worker.js')).replace('</', '<\\/')
 shell = R('shell.html')
 assert shell.startswith('<body>')

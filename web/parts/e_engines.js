@@ -23,14 +23,16 @@ var LABEL = {
   openai: 'OpenAI 相容（Groq／OpenRouter／Ollama）',
   deepl: 'DeepL（免費金鑰・僅 APK）',
   chrome: 'Chrome 內建離線 AI 翻譯',
-  mlkit: '手機離線翻譯（免費・免網路・僅 APK）'
+  mlkit: '手機離線翻譯（免費・免網路・僅 APK）',
+  opus: 'Opus-MT 開源離線模型（免金鑰・首次下載）'
 };
-var IDS = ['gemini', 'openai', 'deepl', 'chrome', 'mlkit'];
+var IDS = ['gemini', 'openai', 'deepl', 'chrome', 'mlkit', 'opus'];
 function isLocal(u){ return /^https?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(u || ''); }
 function avail(e){
   if(e === 'deepl') return APP;
   if(e === 'mlkit') return HAS_MT;
   if(e === 'chrome') return !APP && ('Translator' in self);
+  if(e === 'opus') return !!window.OPUS;
   return true;
 }
 function ready(e){
@@ -39,6 +41,7 @@ function ready(e){
   if(e === 'deepl') return APP && !!C.deeplKey;
   if(e === 'chrome') return ('Translator' in self);
   if(e === 'mlkit') return HAS_MT;
+  if(e === 'opus') return !!window.OPUS;
   return false;
 }
 var eng = function(){ return engineSel.value; };
@@ -230,10 +233,10 @@ async function plainBatch(e, texts, opts){
     if(!map.has(t)){ map.set(t, []); need.push(t); }
     map.get(t).push(i);
   });
-  var failed = 0, lastErr = null, done = 0, CH = e === 'chrome' ? 10 : 40;
+  var failed = 0, lastErr = null, done = 0, CH = e === 'chrome' ? 10 : e === 'opus' ? 16 : 40;
   for(var p = 0; p < need.length; p += CH){
     var chunk = need.slice(p, p + CH), res = null;
-    try{ res = e === 'deepl' ? await deeplRun(chunk, sl, tl) : e === 'mlkit' ? await mtRun(chunk, sl, tl) : await chromeRun(chunk, sl, tl); }
+    try{ res = e === 'deepl' ? await deeplRun(chunk, sl, tl) : e === 'mlkit' ? await mtRun(chunk, sl, tl) : e === 'opus' ? await OPUS.run(chunk, sl, tl) : await chromeRun(chunk, sl, tl); }
     catch(err){ lastErr = err; }
     chunk.forEach(function(t, k){
       var r = res && res[k], ids = map.get(t);
@@ -254,7 +257,7 @@ aiImagesAvailable = function(){
   var e = eng();
   if(e === 'gemini') return !!C.gemKey;
   if(e === 'openai') return ready('openai') && !!C.oaiVision;
-  if(e === 'deepl' || e === 'chrome' || e === 'mlkit') return false;
+  if(e === 'deepl' || e === 'chrome' || e === 'mlkit' || e === 'opus') return false;
   return _aiImagesAvailable();
 };
 callAIJson = async function(prompt, imgs){
@@ -265,7 +268,7 @@ callAIJson = async function(prompt, imgs){
 };
 translateBatch = async function(texts, opts){
   var e = eng();
-  if(e === 'deepl' || e === 'chrome' || e === 'mlkit'){
+  if(e === 'deepl' || e === 'chrome' || e === 'mlkit' || e === 'opus'){
     var r = await plainBatch(e, texts, opts);
     if(aiTranslateBatch.lastNeeded && aiTranslateBatch.lastFailed >= aiTranslateBatch.lastNeeded && aiTranslateBatch.lastError) throw aiTranslateBatch.lastError;
     if(aiTranslateBatch.lastFailed) toast('有 ' + aiTranslateBatch.lastFailed + ' 句翻譯失敗，已保留原文，可再按一次重試。', true);
@@ -283,7 +286,7 @@ updateEnginePill = function(){
   _updateEnginePill();
   var e = eng(); if(!isX(e)) return;
   var ok = ready(e), name = LABEL[e].replace(/（.*$/, '');
-  var txt = ok ? name + ' 已就緒' : (e === 'chrome' ? '此瀏覽器不支援' : '尚未設定金鑰');
+  var txt = ok ? name + ' 已就緒' : (e === 'chrome' ? '此瀏覽器不支援' : e === 'opus' ? '離線模型未載入' : '尚未設定金鑰');
   if(e === 'gemini' && ok) txt = 'Gemini 已就緒（' + C.gemModel.replace('gemini-', '') + '）';
   if(e === 'openai' && ok) txt = 'OpenAI 相容 已就緒（' + C.oaiModel.split('/').pop() + '）';
   enginePill.textContent = txt; enginePill.className = 'status-pill ' + (ok ? 'ok' : 'bad');
@@ -307,6 +310,10 @@ var UI = el(
  '<select id="x2gemModel"><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（最快、免費額度最多）</option><option value="gemini-2.5-flash">gemini-2.5-flash（建議，品質與速度平衡）</option><option value="gemini-2.5-pro">gemini-2.5-pro（最準、免費額度很少）</option></select>' +
  '<div class="help">免費申請：' + link('https://aistudio.google.com/apikey', 'aistudio.google.com/apikey') + '（Google 帳號登入 → Create API key，免綁信用卡）。免費層有每分鐘／每天次數上限。可翻譯文字，也能看圖片；即時字幕還能直接聽音檔。</div>' +
  '<div class="btn-row"><button class="secondary" id="x2testGem">測試 Gemini</button></div></div>' +
+
+ '<div class="field"><label class="lbl">Opus-MT 開源離線模型（免金鑰）</label>' +
+ '<p class="help">到「翻譯引擎」選「Opus-MT 開源離線模型」即可。模型放在本專案 GitHub，第一次用到某個語言才下載（每組約 70–100MB），之後快取，不再耗流量。中文輸出會自動轉成台灣繁體。品質不及 Gemini／Claude，但免費、免金鑰、資料不離開你的裝置。</p>' +
+ '<div class="btn-row"><button class="secondary" id="x2opusPre">預先下載目前語言組合</button><button class="secondary" id="x2opusList">看可用語言</button></div><div class="help" id="x2opusSt"></div></div>' +
 
  '<div class="field"><label class="lbl">OpenAI 相容 API（Groq、OpenRouter 免費模型、Ollama 本機、其他）</label>' +
  '<select id="x2oaiPreset"><option value="groq">Groq（免費額度、速度很快）</option><option value="openrouter">OpenRouter（有多個免費模型）</option><option value="ollama">Ollama（自己電腦／伺服器跑的模型）</option><option value="custom">自訂</option></select>' +
@@ -370,6 +377,12 @@ async function testEngine(kind){
 $x('x2testGem').addEventListener('click', function(){ testEngine('gem'); });
 $x('x2testOai').addEventListener('click', function(){ testEngine('oai'); });
 $x('x2quotaBtn').addEventListener('click', gqRefresh);
+$x('x2opusPre').addEventListener('click', async function(){
+  try{ var n = await OPUS.prefetch(srcSel.value, tgtSel.value); toast('✓ 已下載：' + n.join('、')); }catch(e){ toast('下載失敗：' + (e.message || e), true); $x('x2opusSt').textContent = e.message || String(e); }
+});
+$x('x2opusList').addEventListener('click', async function(){
+  try{ var p = await OPUS.pairs(); $x('x2opusSt').textContent = '可用語言對：' + Object.keys(p).join('、') + '（沒有直接語言對時會用英文中繼）'; }catch(e){ $x('x2opusSt').textContent = e.message || String(e); }
+});
 (function(){
   var chip = document.createElement('span'); chip.id = 'gqChip'; chip.className = 'status-pill ok'; chip.style.cssText = 'display:none;margin-left:6px;cursor:pointer';
   chip.title = '點一下查看／更新 Groq 剩餘額度'; var pill = document.getElementById('engineStatus');

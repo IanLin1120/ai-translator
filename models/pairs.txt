@@ -1,0 +1,10 @@
+# 每行一組 Opus-MT 語言對（Hugging Face 的 Xenova/opus-mt-<來源>-<目標>）。改這個檔案並 push，就會自動重新打包到 models 分支。
+# 沒有直接語言對時，網頁會用英文中繼（例如 ja-en + en-zh）。每組約 70–100MB，請勿加太多。
+en-zh
+zh-en
+ja-en
+en-jap
+ko-en
+es-en
+fr-en
+de-en

@@ -24,7 +24,36 @@ final class Translator {
 
     private Translator() { }
 
+    private static boolean isTrad(JSONObject cfg) {
+        String t = cfg.optString("tgt", "zh-TW").toLowerCase();
+        return t.startsWith("zh-tw") || t.startsWith("zh-hant");
+    }
+    private static android.icu.text.Transliterator S2T;
+    /** 簡體→繁體保險：模型偶爾會輸出簡體字，目標是繁體中文時再轉一次。 */
+    static String toTrad(String s) {
+        if (s == null || s.isEmpty()) return s;
+        try {
+            if (S2T == null) S2T = android.icu.text.Transliterator.getInstance("Hans-Hant");
+            return S2T.transliterate(s);
+        } catch (Throwable e) { return s; }
+    }
+    private static String tname(JSONObject cfg) {
+        String tn = cfg.optString("tgtName", "繁體中文");
+        return isTrad(cfg) ? tn + "（台灣用語的繁體字；嚴禁輸出簡體字）" : tn;
+    }
+
     static List<String> translate(JSONObject cfg, List<String> texts) throws Exception {
+        List<String> r = translateRaw(cfg, texts);
+        if (!isTrad(cfg)) return r;
+        List<String> o = new ArrayList<String>();
+        for (int i = 0; i < r.size(); i++) {
+            String a = r.get(i), src = i < texts.size() ? texts.get(i) : null;
+            o.add(a != null && !a.equals(src) ? toTrad(a) : a);
+        }
+        return o;
+    }
+
+    static List<String> translateRaw(JSONObject cfg, List<String> texts) throws Exception {
         String engine = cfg.optString("engine", "google");
         if ("none".equals(engine)) return new ArrayList<String>(texts);
         if ("claude".equals(engine) || "gemini".equals(engine) || "openai".equals(engine)) return llmTexts(cfg, texts, engine);
@@ -185,7 +214,7 @@ final class Translator {
 
     private static List<String> llmTexts(JSONObject cfg, List<String> texts, String engine) throws Exception {
         String sn = "auto".equals(cfg.optString("src", "auto")) ? "自動偵測原文語言" : cfg.optString("srcName", "原文");
-        String tn = cfg.optString("tgtName", "繁體中文");
+        String tn = tname(cfg);
         JSONArray in = new JSONArray();
         for (String t : texts) in.put(t);
         String prompt = "你是專業翻譯引擎。把下列 JSON 陣列中的每一段文字從" + sn + "翻譯成" + tn + "，語意自然、專業。" +
@@ -229,7 +258,7 @@ final class Translator {
     /** 看圖辨識＋翻譯（Claude／Gemini／OpenAI 相容的視覺模型）：回傳 [原文, 譯文] 清單。 */
     static List<String[]> vision(JSONObject cfg, Bitmap bmp, String engine) throws Exception {
         String sn = "auto".equals(cfg.optString("src", "auto")) ? "自動偵測" : cfg.optString("srcName", "原文");
-        String tn = cfg.optString("tgtName", "繁體中文");
+        String tn = tname(cfg);
         ByteArrayOutputStream bo = new ByteArrayOutputStream();
         bmp.compress(Bitmap.CompressFormat.JPEG, 88, bo);
         String b64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
@@ -241,7 +270,7 @@ final class Translator {
             JSONObject o = res.optJSONObject(i);
             if (o == null) continue;
             String a = o.optString("original", ""), b = o.optString("translated", "");
-            if (!a.trim().isEmpty() || !b.trim().isEmpty()) out.add(new String[] {a, b});
+            if (!a.trim().isEmpty() || !b.trim().isEmpty()) out.add(new String[] {a, isTrad(cfg) ? toTrad(b) : b});
         }
         return out;
     }
@@ -250,7 +279,7 @@ final class Translator {
 
     /** 聲音片段（WAV）→ {原文, 譯文}（Gemini 能直接聽音檔；自動辨識語言）。 */
     static String[] geminiAudio(JSONObject cfg, byte[] wav, boolean translate) throws Exception {
-        String tn = cfg.optString("tgtName", "繁體中文");
+        String tn = tname(cfg);
         String prompt = "Transcribe the speech in this audio clip (detect the language automatically)." + (translate ? " Then translate it into " + tn + "." : "") +
             " Reply ONLY with JSON: {\"original\":\"...\"" + (translate ? ",\"translation\":\"...\"" : "") + "}. " +
             "If there is no clear human speech (silence, music, noise), reply {\"original\":\"\"" + (translate ? ",\"translation\":\"\"" : "") + "}. Never invent text.";
@@ -258,6 +287,7 @@ final class Translator {
         int a = r.indexOf('{'), b = r.lastIndexOf('}');
         if (a < 0 || b <= a) return new String[] {"", ""};
         JSONObject o = new JSONObject(r.substring(a, b + 1));
-        return new String[] {o.optString("original", "").trim(), o.optString("translation", "").trim()};
+        String tr = o.optString("translation", "").trim();
+        return new String[] {o.optString("original", "").trim(), isTrad(cfg) ? toTrad(tr) : tr};
     }
 }

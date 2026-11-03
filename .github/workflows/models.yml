@@ -1,0 +1,28 @@
+name: models
+on:
+  workflow_dispatch:
+  push:
+    paths: ['models/pairs.txt', '.github/workflows/models.yml', 'models/build_models.py']
+permissions:
+  contents: write
+concurrency: models
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install huggingface_hub
+      - name: Download Opus-MT ONNX (quantized) models
+        run: python models/build_models.py out
+      - name: Publish to models branch (orphan, force-pushed so history never grows)
+        run: |
+          find out -name .cache -type d -prune -exec rm -rf {} + ; cd out
+          git init -q -b models
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Opus-MT models"
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git push -f origin models

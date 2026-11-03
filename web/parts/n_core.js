@@ -207,7 +207,7 @@ async function callAIJson(prompt, imgs){
 async function aiTranslateBatch(texts, opts){
   opts = opts || {};
   var srcName = opts.sourceLang === 'auto' ? '（請自動偵測原文語言，原文可能夾雜多種語言）' : langName(opts.sourceLang);
-  var tgtName = langName(opts.targetLang);
+  var tgtName = langName(opts.targetLang) + (/^zh-(TW|Hant)/i.test(opts.targetLang) ? '（台灣用語的繁體字；嚴禁輸出簡體字）' : '');
   var out = new Array(texts.length), failed = 0, needed = 0, lastErr = null;
   var CHUNK = 40, CHARS = 4000, chunks = [], cur = [], curLen = 0, i;
   for(i = 0; i < texts.length; i++){
@@ -301,7 +301,7 @@ function canvasToPrepared(canvas, maxSide){
 /* OCR + translate; returns lines [{orig, pairs:[{o,t}]}] one sentence / label per pair */
 async function aiTranslateImage(prepared, sourceLang, targetLang){
   var srcName = sourceLang === 'auto' ? '自動偵測' : langName(sourceLang);
-  var tgtName = langName(targetLang);
+  var tgtName = langName(targetLang) + (/^zh-(TW|Hant)/i.test(targetLang) ? '（台灣用語的繁體字；嚴禁輸出簡體字）' : '');
   var prompt = '請辨識這張圖片中的所有文字（依閱讀順序：由上到下、由左到右），來源語言：' + srcName + '，並翻譯成' + tgtName + '。' +
     '請「每一句話或每一個獨立的文字標籤」各拆成一個項目，不要把多句話合併在同一項。' +
     '格式：[{"original":"原文一句","translated":"對應的一句譯文"}]。只回傳 JSON 陣列，不要任何說明；若圖片中沒有文字，回傳 []。';
