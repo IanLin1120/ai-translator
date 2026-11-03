@@ -1,0 +1,3010 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 全能翻譯系統</title>
+<style>
+:root{
+  --bg:#DCCFAE;
+  --bg-2:#CBBB90;
+  --surface:#F2E9D3;
+  --surface-2:#E8DBB8;
+  --surface-3:#FBF6E8;
+  --text:#2B2013;
+  --text-2:#5A4A30;
+  --text-muted:#7A6B4C;
+  --accent:#A8471F;
+  --accent-2:#7D3316;
+  --accent-fg:#FBF1E4;
+  --olive:#5C6027;
+  --olive-fg:#EEF0DD;
+  --border:#8C7A50;
+  --border-soft:#B3A377;
+  --danger:#8C2A20;
+  --danger-fg:#FDEDE8;
+  --success:#3E5C1F;
+  --success-fg:#EDF4E1;
+  --shadow: 0 2px 10px rgba(43,32,19,0.18);
+  --radius:14px;
+  --radius-sm:8px;
+  --font-sans: "Noto Sans TC","PingFang TC","Microsoft JhengHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1610;
+    --bg-2:#241D14;
+    --surface:#2A2217;
+    --surface-2:#332A1B;
+    --surface-3:#3C3220;
+    --text:#EFE3C8;
+    --text-2:#CBB98F;
+    --text-muted:#9C8B67;
+    --accent:#E07B45;
+    --accent-2:#F09562;
+    --accent-fg:#241005;
+    --olive:#B6BD73;
+    --olive-fg:#20230D;
+    --border:#5A4B2E;
+    --border-soft:#453A25;
+    --danger:#E37464;
+    --danger-fg:#2A0E0A;
+    --success:#9FC46E;
+    --success-fg:#132008;
+    --shadow: 0 2px 14px rgba(0,0,0,0.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1610;
+  --bg-2:#241D14;
+  --surface:#2A2217;
+  --surface-2:#332A1B;
+  --surface-3:#3C3220;
+  --text:#EFE3C8;
+  --text-2:#CBB98F;
+  --text-muted:#9C8B67;
+  --accent:#E07B45;
+  --accent-2:#F09562;
+  --accent-fg:#241005;
+  --olive:#B6BD73;
+  --olive-fg:#20230D;
+  --border:#5A4B2E;
+  --border-soft:#453A25;
+  --danger:#E37464;
+  --danger-fg:#2A0E0A;
+  --success:#9FC46E;
+  --success-fg:#132008;
+  --shadow: 0 2px 14px rgba(0,0,0,0.45);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height:1.6;
+  min-height:100vh;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 18px 60px;}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+  padding:16px 20px;
+  background: var(--surface);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom:18px;
+}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{
+  width:42px;height:42px;border-radius:10px;
+  background: linear-gradient(160deg, var(--accent), var(--accent-2));
+  display:flex;align-items:center;justify-content:center;
+  color:var(--accent-fg);font-weight:700;font-size:18px;flex-shrink:0;
+}
+.brand h1{font-size:18px;margin:0;letter-spacing:.5px;}
+.brand p{margin:2px 0 0;font-size:12px;color:var(--text-muted);}
+.theme-toggle{
+  border:1px solid var(--border-soft);
+  background: var(--surface-2);
+  color:var(--text);
+  padding:8px 14px;border-radius:999px;
+  cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;
+}
+.theme-toggle:hover{border-color:var(--accent);}
+
+.lang-bar{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  background: var(--surface);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding:14px 18px;margin-bottom:18px;
+}
+.lang-bar .grp{display:flex;flex-direction:column;gap:4px;}
+.lang-bar label{font-size:11px;color:var(--text-muted);letter-spacing:.4px;}
+select{
+  background: var(--surface-3);
+  color:var(--text);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding:8px 10px;font-size:13.5px;font-family:inherit;
+  min-width:150px;
+}
+.swap-btn{
+  align-self:flex-end;
+  border:1px solid var(--border-soft);
+  background:var(--surface-2);color:var(--text);
+  border-radius:999px;width:36px;height:36px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+}
+.swap-btn:hover{border-color:var(--accent);color:var(--accent);}
+.status-pill{
+  margin-left:auto;font-size:12px;color:var(--text-muted);
+  border:1px solid var(--border-soft);padding:6px 12px;border-radius:999px;
+  background:var(--surface-2);
+}
+.status-pill.ok{color:var(--success);border-color:var(--success);}
+.status-pill.bad{color:var(--danger);border-color:var(--danger);}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.tab-btn{
+  border:1px solid var(--border-soft);
+  background:var(--surface-2);
+  color:var(--text-2);
+  padding:9px 16px;border-radius:999px;cursor:pointer;
+  font-size:13.5px;font-family:inherit;
+}
+.tab-btn.active{
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight:600;
+}
+.panel{
+  background: var(--surface);
+  border:1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding:22px;
+  display:none;
+}
+.panel.active{display:block;}
+.panel h2{margin:0 0 4px;font-size:16px;}
+.panel .desc{font-size:12.5px;color:var(--text-muted);margin:0 0 16px;}
+.note{
+  font-size:12px;color:var(--text-muted);
+  background:var(--surface-2);border:1px dashed var(--border-soft);
+  padding:8px 12px;border-radius:var(--radius-sm);margin-top:10px;
+}
+
+textarea{
+  width:100%;min-height:160px;
+  background:var(--surface-3);color:var(--text);
+  border:1px solid var(--border-soft);border-radius:var(--radius-sm);
+  padding:12px;font-size:14px;font-family:inherit;resize:vertical;
+}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:720px){.two-col{grid-template-columns:1fr;}}
+
+.dropzone{
+  border:2px dashed var(--border-soft);
+  border-radius: var(--radius);
+  padding:28px 16px;text-align:center;cursor:pointer;
+  background:var(--surface-2);color:var(--text-2);
+  transition:.15s;
+}
+.dropzone:hover, .dropzone.drag{border-color:var(--accent);color:var(--accent);}
+.dropzone .big{font-size:14px;font-weight:600;margin-bottom:4px;}
+.dropzone .small{font-size:12px;color:var(--text-muted);}
+.file-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--surface-3);border:1px solid var(--border-soft);
+  border-radius:999px;padding:6px 12px;font-size:12.5px;margin-top:10px;
+}
+.file-chip button{
+  border:none;background:transparent;color:var(--danger);cursor:pointer;font-size:13px;
+}
+
+button.primary{
+  background:var(--accent);color:var(--accent-fg);
+  border:1px solid var(--accent-2);border-radius:var(--radius-sm);
+  padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+button.primary:hover{background:var(--accent-2);}
+button.primary:disabled{opacity:.5;cursor:not-allowed;}
+button.secondary{
+  background:var(--surface-2);color:var(--text);
+  border:1px solid var(--border-soft);border-radius:var(--radius-sm);
+  padding:10px 18px;font-size:13.5px;cursor:pointer;font-family:inherit;
+}
+button.secondary:hover{border-color:var(--accent);color:var(--accent);}
+button.olive{
+  background:var(--olive);color:var(--olive-fg);
+  border:1px solid var(--olive);border-radius:var(--radius-sm);
+  padding:10px 18px;font-size:13.5px;cursor:pointer;font-weight:600;font-family:inherit;
+}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;}
+
+.progress-wrap{margin-top:14px;display:none;}
+.progress-wrap.show{display:block;}
+.progress-bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;border:1px solid var(--border-soft);}
+.progress-bar > div{height:100%;background:var(--accent);width:0%;transition:width .2s;}
+.progress-label{font-size:12px;color:var(--text-muted);margin-top:6px;}
+
+.result-box{
+  margin-top:16px;background:var(--surface-3);border:1px solid var(--border-soft);
+  border-radius:var(--radius-sm);padding:14px;font-size:13.5px;white-space:pre-wrap;
+  max-height:400px;overflow:auto;
+}
+.result-list .row{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  padding:10px 0;border-bottom:1px solid var(--border-soft);
+}
+.result-list .row:last-child{border-bottom:none;}
+.result-list .orig{color:var(--text-muted);}
+.result-list .trans{color:var(--text);font-weight:500;}
+
+.badge{
+  display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--border-soft);color:var(--text-muted);
+}
+
+.crop-stage{position:relative;max-width:100%;margin-top:12px;display:none;}
+.crop-stage.show{display:block;}
+.crop-stage canvas{max-width:100%;border-radius:var(--radius-sm);border:1px solid var(--border-soft);display:block;}
+.crop-sel{
+  position:absolute;border:2px solid var(--accent);
+  background:rgba(168,71,31,0.18);pointer-events:none;display:none;
+}
+
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--border-soft);border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+a{color:var(--accent);}
+.footer-note{margin-top:22px;text-align:center;font-size:11.5px;color:var(--text-muted);}
+
+.crop-stage{touch-action:none;}
+.crop-stage video{max-width:100%;height:auto;border-radius:var(--radius-sm);border:1px solid var(--border-soft);background:#000;display:block;}
+.crop-stage canvas{height:auto;}
+.result-list .row.one{grid-template-columns:1fr;}
+.live-opts{display:none;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:12.5px;color:var(--text-2);}
+.live-opts label{display:flex;align-items:center;gap:6px;}
+.live-opts select{min-width:0;padding:5px 8px;}
+.or{font-size:12.5px;color:var(--text-muted);}
+.note.err{border-color:var(--danger);border-style:solid;color:var(--danger);}
+.note.steps{border-style:solid;line-height:1.75;}
+
+/* dialogs + toast */
+.modal-mask{position:fixed;inset:0;background:rgba(20,14,6,.6);display:none;align-items:center;justify-content:center;z-index:999;padding:16px;}
+.modal-mask.show{display:flex;}
+.modal-box{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;width:100%;max-width:520px;max-height:92vh;overflow:auto;}
+.modal-box.wide{max-width:640px;}
+.modal-box h3{margin:0 0 12px;font-size:16px;}
+.field{margin-bottom:12px;}
+.field > label.lbl{display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;}
+.field input[type="text"],.field input[type="password"],.field select{width:100%;background:var(--surface-3);color:var(--text);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:9px 11px;font-size:13.5px;font-family:inherit;}
+.gk-links{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:8px;font-size:12.5px;}
+.gk-links a{color:var(--accent);text-decoration:none;border:1px solid var(--border-soft);border-radius:999px;padding:3px 10px;background:var(--surface-2);}
+.gk-links a:hover{border-color:var(--accent);}
+.gk-steps{margin-top:8px;font-size:12px;color:var(--text-2);}
+.gk-steps summary{cursor:pointer;color:var(--accent);}
+.gk-steps ol{margin:6px 0 0;padding-left:20px;line-height:1.7;}
+.field .help{font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.55;}
+.chk-line{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);margin:6px 0;}
+.opts{display:flex;flex-direction:column;gap:6px;}
+label.opt{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-soft);border-radius:var(--radius-sm);background:var(--surface-2);cursor:pointer;font-size:13.5px;}
+label.opt.on{border-color:var(--accent);background:var(--surface-3);font-weight:600;}
+.name-row{display:flex;align-items:center;gap:6px;}
+.name-row input{flex:1;}
+.name-row .ext{font-size:13px;color:var(--text-2);font-weight:600;white-space:nowrap;}
+.preview{background:var(--surface-3);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:10px 12px;font-size:12.5px;white-space:pre-wrap;max-height:210px;overflow:auto;line-height:1.55;}
+.sub-opts{border-left:3px solid var(--accent);padding-left:12px;margin:0 0 12px;}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;max-width:min(92vw,520px);opacity:0;pointer-events:none;transition:.25s;z-index:1000;box-shadow:var(--shadow);line-height:1.55;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.warn{background:var(--danger);color:var(--danger-fg);}
+
+/* floating translation window (also copied into the Picture-in-Picture window) */
+.fl-wrap{display:flex;flex-direction:column;height:100vh;background:var(--bg);color:var(--text);font-family:var(--font-sans);}
+.fl-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border-soft);font-size:13px;}
+.fl-dot{width:9px;height:9px;border-radius:50%;background:var(--olive);flex-shrink:0;}
+.fl-status{margin-left:auto;font-size:11.5px;color:var(--text-muted);}
+.fl-tools{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border-soft);}
+.fl-btn{border:1px solid var(--border-soft);background:var(--surface-3);color:var(--text);border-radius:8px;padding:4px 10px;font-size:12.5px;cursor:pointer;font-family:inherit;}
+.fl-btn:hover{border-color:var(--accent);color:var(--accent);}
+.fl-list{flex:1;overflow:auto;padding:10px 14px;line-height:1.55;}
+.fl-row{padding:8px 0;border-bottom:1px solid var(--border-soft);}
+.fl-o{color:var(--text-muted);font-size:.78em;margin-bottom:2px;}
+.fl-t{font-weight:600;}
+.fl-empty{color:var(--text-muted);font-size:13px;padding:14px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">譯</div>
+      <div>
+        <h1>AI 全能翻譯系統</h1>
+        <p>文字・圖片・Excel・Word・PDF・郵件・螢幕擷取 一站翻譯</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="theme-toggle" id="btnSettings">⚙ 設定</button>
+      <button class="theme-toggle" id="themeToggle">🌓 切換明暗模式</button>
+    </div>
+  </div>
+
+  <div class="lang-bar">
+    <div class="grp">
+      <label>原文語言</label>
+      <select id="srcLang"></select>
+    </div>
+    <button class="swap-btn" id="swapLang" title="交換語言">⇄</button>
+    <div class="grp">
+      <label>翻譯成</label>
+      <select id="tgtLang"></select>
+    </div>
+    <div class="grp">
+      <label>翻譯引擎</label>
+      <select id="engineSel">
+        <option value="ai">AI 翻譯（準確、懂語意）</option>
+        <option value="google">Google 翻譯（免費，僅文字類檔案）</option>
+      </select>
+    </div>
+    <div class="status-pill" id="engineStatus">AI 引擎檢查中…</div>
+  </div>
+
+  <div class="tabs" id="tabBar">
+    <button class="tab-btn active" data-tab="text">文字</button>
+    <button class="tab-btn" data-tab="image">圖片</button>
+    <button class="tab-btn" data-tab="excel">Excel</button>
+    <button class="tab-btn" data-tab="word">Word</button>
+    <button class="tab-btn" data-tab="pdf">PDF</button>
+    <button class="tab-btn" data-tab="mail">Outlook 郵件</button>
+    <button class="tab-btn" data-tab="screen">螢幕擷取翻譯</button>
+  </div>
+
+  <!-- ============ TEXT ============ -->
+  <div class="panel active" data-panel="text">
+    <h2>文字翻譯</h2>
+    <p class="desc">直接貼上文字，使用 AI 進行語意翻譯（非逐字機械翻譯）。</p>
+    <div class="two-col">
+      <div>
+        <textarea id="textIn" placeholder="在此貼上要翻譯的文字…"></textarea>
+      </div>
+      <div>
+        <textarea id="textOut" placeholder="翻譯結果會顯示在這裡…" readonly></textarea>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransText">開始翻譯</button>
+      <button class="secondary" id="btnCopyText">複製譯文</button>
+      <button class="secondary" id="btnCopyBoth">複製雙語對照</button>
+      <button class="secondary" id="btnDlText">匯出 .txt（可選雙語對照）…</button>
+    </div>
+    <div class="progress-wrap" id="pwText"><div class="progress-bar"><div id="pbText"></div></div><div class="progress-label" id="plText"></div></div>
+  </div>
+
+  <!-- ============ IMAGE ============ -->
+  <div class="panel" data-panel="image">
+    <h2>圖片翻譯（OCR + AI 翻譯）</h2>
+    <p class="desc">上傳圖片，AI 會辨識圖中的文字並翻譯。輸出為原文／譯文對照清單。</p>
+    <div class="dropzone" id="dzImage">
+      <div class="big">拖曳圖片到這裡，或點擊選擇檔案</div>
+      <div class="small">支援 JPG / PNG / WEBP</div>
+      <input type="file" id="fileImage" accept="image/*" style="display:none">
+    </div>
+    <div id="imagePreviewWrap"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransImage" disabled>辨識並翻譯</button>
+      <button class="secondary" id="btnDlImage" disabled>匯出 .txt（可選雙語對照）…</button>
+    </div>
+    <div class="progress-wrap" id="pwImage"><div class="progress-bar"><div id="pbImage"></div></div><div class="progress-label" id="plImage"></div></div>
+    <div class="result-box result-list" id="resImage" style="display:none;"></div>
+  </div>
+
+  <!-- ============ EXCEL ============ -->
+  <div class="panel" data-panel="excel">
+    <h2>Excel 翻譯</h2>
+    <p class="desc">保留原始活頁簿結構、公式與儲存格配置，僅翻譯文字內容。輸出檔名會加上語言後綴，例如「客戶資料-中文.xlsx」。</p>
+    <div class="dropzone" id="dzExcel">
+      <div class="big">拖曳 .xlsx / .xls / .csv 到這裡，或點擊選擇檔案</div>
+      <div class="small">支援多工作表</div>
+      <input type="file" id="fileExcel" accept=".xlsx,.xls,.csv" style="display:none">
+    </div>
+    <div id="excelChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransExcel" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlExcel" disabled>匯出（可自訂檔名）…</button>
+    </div>
+    <div class="progress-wrap" id="pwExcel"><div class="progress-bar"><div id="pbExcel"></div></div><div class="progress-label" id="plExcel"></div></div>
+    <div class="note">複雜的儲存格樣式（自訂色彩、條件式格式）在少數情況下可能無法完整保留，一般文字格式、欄寬與公式不受影響。</div>
+  </div>
+
+  <!-- ============ WORD ============ -->
+  <div class="panel" data-panel="word">
+    <h2>Word 翻譯</h2>
+    <p class="desc">保留段落、標題、粗體 / 斜體 / 底線、清單與表格結構，翻譯內文文字，輸出為新的 .docx。</p>
+    <div class="dropzone" id="dzWord">
+      <div class="big">拖曳 .docx 到這裡，或點擊選擇檔案</div>
+      <div class="small">舊版 .doc 請先於 Word 另存為 .docx</div>
+      <input type="file" id="fileWord" accept=".docx" style="display:none">
+    </div>
+    <div id="wordChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransWord" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlWord" disabled>匯出（可自訂檔名）…</button>
+    </div>
+    <div class="progress-wrap" id="pwWord"><div class="progress-bar"><div id="pbWord"></div></div><div class="progress-label" id="plWord"></div></div>
+    <div class="note">圖片、頁首頁尾與複雜版面（分欄、文字方塊）目前不會複製到輸出檔案中，僅保留主要內文格式。</div>
+  </div>
+
+  <!-- ============ PDF ============ -->
+  <div class="panel" data-panel="pdf">
+    <h2>PDF 翻譯</h2>
+    <p class="desc">保留每一頁的原始版面（文字位置與頁面外觀），將翻譯結果疊加在對應位置，輸出為可離線開啟的 HTML 檔案。</p>
+    <div class="dropzone" id="dzPdf">
+      <div class="big">拖曳 .pdf 到這裡，或點擊選擇檔案</div>
+      <div class="small">掃描檔（純圖片 PDF）辨識效果有限</div>
+      <input type="file" id="filePdf" accept=".pdf" style="display:none">
+    </div>
+    <div id="pdfChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransPdf" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlPdf" disabled>匯出（可自訂檔名）…</button>
+    </div>
+    <div class="progress-wrap" id="pwPdf"><div class="progress-bar"><div id="pbPdf"></div></div><div class="progress-label" id="plPdf"></div></div>
+    <div class="note">因瀏覽器產生的 PDF 缺乏完整中日韓字型，本工具會輸出「版面一致的 HTML 複本」；若需要 .pdf 檔，開啟後用瀏覽器的「列印 → 另存為 PDF」即可轉存，版面會與原始 PDF 一致。</div>
+  </div>
+
+  <!-- ============ MAIL ============ -->
+  <div class="panel" data-panel="mail">
+    <h2>Outlook 郵件翻譯</h2>
+    <p class="desc">翻譯郵件主旨與內文，保留郵件標頭資訊（寄件者、收件者、時間）。</p>
+    <div class="dropzone" id="dzMail">
+      <div class="big">拖曳 .eml 到這裡，或點擊選擇檔案</div>
+      <div class="small">.msg 檔請先在 Outlook 用「另存新檔 → .eml」匯出後再上傳</div>
+      <input type="file" id="fileMail" accept=".eml,.msg,.txt" style="display:none">
+    </div>
+    <div id="mailChip"></div>
+    <div class="btn-row">
+      <button class="primary" id="btnTransMail" disabled>翻譯並產出檔案</button>
+      <button class="secondary" id="btnDlMail" disabled>匯出（可選格式與雙語對照）…</button>
+    </div>
+    <div class="progress-wrap" id="pwMail"><div class="progress-bar"><div id="pbMail"></div></div><div class="progress-label" id="plMail"></div></div>
+    <div class="result-box" id="resMail" style="display:none;"></div>
+    <div class="note">.msg 為 Outlook 專屬二進位格式，瀏覽器無法直接解析；本工具僅能嘗試擷取其中可讀文字，建議改用 .eml 以確保完整正確。</div>
+  </div>
+
+  <!-- ============ SCREEN ============ -->
+  <div class="panel" data-panel="screen">
+    <h2>螢幕翻譯（框選・即時・懸浮視窗）</h2>
+    <p class="desc">分享整個螢幕或某個視窗後，框選要翻譯的區域：可「翻譯一次」，也可開啟置頂的懸浮小視窗，在其他軟體上方持續即時翻譯。若不想分享螢幕，也可直接上傳截圖。</p>
+    <div class="btn-row">
+      <button class="primary" id="btnCapture">開始擷取畫面</button>
+      <span class="or">— 或 —</span>
+      <button class="secondary" id="btnUploadShot">上傳截圖圖片</button>
+      <input type="file" id="fileShot" accept="image/*" style="display:none">
+    </div>
+    <div id="captureErr" class="note err" style="display:none;"></div>
+    <div class="crop-stage" id="cropStage">
+      <video id="liveVideo" muted playsinline style="display:none;"></video>
+      <canvas id="cropCanvas" style="display:none;"></canvas>
+      <div class="crop-sel" id="cropSel"></div>
+    </div>
+    <div class="btn-row" id="screenActions" style="display:none;">
+      <button class="olive" id="btnTransSel">翻譯選取區域（未框選＝整個畫面）</button>
+      <button class="primary" id="btnFloat">🪟 開啟懸浮即時翻譯</button>
+      <button class="secondary" id="btnStopCap">停止分享</button>
+      <button class="secondary" id="btnDlScreen" disabled>匯出結果…</button>
+    </div>
+    <div class="live-opts" id="liveOpts">
+      <label>畫面變化靈敏度
+        <select id="liveSens"><option value="high">高</option><option value="mid" selected>中</option><option value="low">低</option></select>
+      </label>
+      <label><input type="checkbox" id="liveAuto" checked> 畫面變化時自動翻譯</label>
+      <label><input type="checkbox" id="liveShowOrig" checked> 懸浮視窗顯示原文</label>
+    </div>
+    <div class="progress-wrap" id="pwScreen"><div class="progress-bar"><div id="pbScreen"></div></div><div class="progress-label" id="plScreen"></div></div>
+    <div class="result-box result-list" id="resScreen" style="display:none;"></div>
+    <div class="note steps">使用方式：① 按「開始擷取畫面」，選擇要分享的螢幕或視窗　② 在預覽上拖曳框選要翻譯的區域（框越小越準、越省額度；影片字幕請只框字幕那一條）　③ 按「翻譯選取區域」翻一次，或按「開啟懸浮即時翻譯」，畫面一有變化就自動翻譯並顯示在置頂小視窗。</div>
+    <div class="note">懸浮視窗會停留在其他軟體上方，但它是獨立的小視窗，不是直接疊在原文位置上（網頁沒有權限在別的軟體畫面上繪圖）。請把它放在不會遮住所選區域的地方，否則它會把自己的譯文又翻譯一遍。即時翻譯需要電腦版 Chrome / Edge 與 Anthropic API 金鑰，每次畫面變化會呼叫一次 AI（依用量計費）。文字辨識與翻譯只支援 AI 引擎（Google 翻譯沒有圖片辨識）。</div>
+  </div>
+
+  <div class="footer-note">可於上方切換「AI 翻譯」或「Google 翻譯」；圖片與螢幕翻譯的文字辨識僅支援 AI 引擎。檔案都在你的瀏覽器內處理，只有要翻譯的文字（或圖片）會送到你選擇的翻譯服務。</div>
+</div>
+
+<div class="modal-mask" id="setModal"><div class="modal-box">
+  <h3>⚙ 設定</h3>
+  <div id="rowAnthropic" class="field">
+    <label class="lbl">Anthropic API 金鑰（AI 翻譯、圖片辨識、螢幕翻譯使用）</label>
+    <input type="password" id="setAnthropicKey" placeholder="sk-ant-..." autocomplete="off">
+    <div class="help">到 console.anthropic.com 申請，費用計入你自己的帳號。金鑰只會從這個瀏覽器直接送到 Anthropic，不經過其他伺服器。</div>
+    <label class="lbl" style="margin-top:10px;">AI 模型</label>
+    <select id="setModel">
+      <option value="claude-sonnet-5-5">Claude Sonnet 5.5（建議，速度與品質平衡）</option>
+      <option value="claude-haiku-5-5">Claude Haiku 5.5（較快、較省）</option>
+      <option value="claude-opus-5-5">Claude Opus 5.5（最準、較貴）</option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="lbl">Google Cloud Translation API 金鑰（選填，讓 Google 翻譯更穩定）</label>
+    <input type="password" id="setGKey" placeholder="AIza..." autocomplete="off">
+    <div class="help">免金鑰模式用的是 Google 沒有公開承諾的端點，偶爾會被限流或擋下。填入官方金鑰後改走正式 API（Google 每月有免費額度，超過才計費；額度以官方價格頁為準）。</div>
+    <div class="gk-links">
+      <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener noreferrer">① 建立專案</a>
+      <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer">② 設定帳單</a>
+      <a href="https://console.cloud.google.com/apis/library/translate.googleapis.com" target="_blank" rel="noopener noreferrer">③ 啟用 Translation API</a>
+      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">④ 建立 API 金鑰</a>
+      <a href="https://cloud.google.com/translate/pricing" target="_blank" rel="noopener noreferrer">價格與免費額度</a>
+    </div>
+    <details class="gk-steps"><summary>申請步驟（點開）</summary>
+      <ol>
+        <li>點「① 建立專案」，用 Google 帳號登入，取名後建立。</li>
+        <li>點「② 設定帳單」，綁定付款方式（Google 要求必須有帳單帳戶才能啟用，但在免費額度內不會扣款）。</li>
+        <li>點「③ 啟用 Translation API」，按「啟用」。</li>
+        <li>點「④ 建立 API 金鑰」→「建立憑證」→「API 金鑰」，複製以 AIza 開頭的字串貼到上面欄位。</li>
+        <li>建議點金鑰的「編輯」→「API 限制」→ 只勾選 Cloud Translation API，避免金鑰被盜用到其他服務。</li>
+        <li>貼上後按「儲存」，並在上方引擎選「Google 翻譯」即可。</li>
+      </ol>
+    </details>
+  </div>
+  <label class="chk-line"><input type="checkbox" id="setFallback"> Google 翻譯失敗的句子，自動改用 AI 補譯（需已設定 AI）</label>
+  <label class="chk-line"><input type="checkbox" id="setRemember"> 在這台電腦的瀏覽器記住金鑰</label>
+  <div class="btn-row"><button class="primary" id="btnSetSave">儲存</button><button class="secondary" id="btnSetClose">關閉</button></div>
+</div></div>
+
+<div class="modal-mask" id="exModal"><div class="modal-box wide">
+  <h3 id="exTitle">匯出</h3>
+  <div class="field" id="exFmtRow"><label class="lbl">檔案格式</label><select id="exFmt"></select></div>
+  <div class="field" id="exModeRow"><label class="lbl">輸出內容</label><div class="opts" id="exModeBox"></div></div>
+  <div class="sub-opts" id="exBothOpts" style="display:none;">
+    <div class="field"><label class="lbl">排列方式</label>
+      <select id="exLayout">
+        <option value="stack">原文一行、譯文一行（上下對照）</option>
+        <option value="inline">同一行（原文 ｜ 譯文）</option>
+      </select>
+    </div>
+    <label class="chk-line"><input type="checkbox" id="exBlank" checked> 每組原文／譯文之間空一行</label>
+    <div class="field"><label class="lbl">譯文前綴（選填，例如 → ）</label><input type="text" id="exPrefix" placeholder="留空＝不加" autocomplete="off"></div>
+  </div>
+  <div class="field"><label class="lbl">檔名（可自訂，不用輸入副檔名）</label>
+    <div class="name-row"><input type="text" id="exName" autocomplete="off"><span class="ext" id="exExt"></span></div>
+  </div>
+  <div class="field" id="exPreviewWrap"><label class="lbl">預覽</label><div class="preview" id="exPreview"></div></div>
+  <div id="exHint" style="font-size:12px;color:var(--text-muted);margin-bottom:10px;"></div>
+  <div class="btn-row"><button class="primary" id="exOk">下載</button><button class="secondary" id="exCancel">取消</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Libraries (UMD, from allowed CDN hosts) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+
+<script>
+/* ============================================================
+   0. THEME
+   ============================================================ */
+(function(){
+  var root = document.documentElement;
+  var saved = null;
+  try{ saved = localStorage.getItem('ai-translator-theme'); }catch(e){}
+  if(saved) root.setAttribute('data-theme', saved);
+  document.getElementById('themeToggle').addEventListener('click', function(){
+    var cur = root.getAttribute('data-theme');
+    var isDark;
+    if(cur){ isDark = cur === 'dark'; }
+    else { isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    var next = isDark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('ai-translator-theme', next); }catch(e){}
+  });
+})();
+
+/* ============================================================
+   1. LANGUAGES
+   ============================================================ */
+var LANGS = [
+  {code:'auto', name:'自動偵測'},
+  {code:'zh-TW', name:'繁體中文'},
+  {code:'zh-CN', name:'簡體中文'},
+  {code:'en', name:'English 英文'},
+  {code:'ja', name:'日本語 日文'},
+  {code:'ko', name:'한국어 韓文'},
+  {code:'vi', name:'Tiếng Việt 越南文'},
+  {code:'th', name:'ภาษาไทย 泰文'},
+  {code:'id', name:'Bahasa Indonesia 印尼文'},
+  {code:'fr', name:'Français 法文'},
+  {code:'de', name:'Deutsch 德文'},
+  {code:'es', name:'Español 西班牙文'},
+  {code:'pt', name:'Português 葡萄牙文'},
+  {code:'it', name:'Italiano 義大利文'},
+  {code:'ru', name:'Русский 俄文'},
+  {code:'ar', name:'العربية 阿拉伯文'}
+];
+function fillLangSelect(sel, includeAuto){
+  sel.innerHTML = '';
+  LANGS.forEach(function(l){
+    if(l.code==='auto' && !includeAuto) return;
+    var o = document.createElement('option');
+    o.value = l.code; o.textContent = l.name;
+    sel.appendChild(o);
+  });
+}
+var srcSel = document.getElementById('srcLang');
+var tgtSel = document.getElementById('tgtLang');
+fillLangSelect(srcSel, true);
+fillLangSelect(tgtSel, false);
+srcSel.value = 'auto';
+tgtSel.value = 'zh-TW';
+document.getElementById('swapLang').addEventListener('click', function(){
+  if(srcSel.value === 'auto') return;
+  var a = srcSel.value, b = tgtSel.value;
+  srcSel.value = b; tgtSel.value = a;
+});
+function langName(code){
+  var f = LANGS.find(function(l){return l.code===code;});
+  return f ? f.name.replace(/\s.*$/,'') : code;
+}
+
+
+/* ============================================================
+   PURE HELPERS (no DOM) — sentence splitting, txt builders,
+   JSON parsing, filename cleanup, .eml parsing / writing
+   ============================================================ */
+/*PURE-START*/
+var ABBR_RE = /(?:^|[\s(])(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|e\.g|i\.e|No|Fig|Inc|Ltd|Co|Corp|approx|est)\.$/i;
+
+/* Split one line of text into sentences (CJK and Latin punctuation aware). */
+function splitSentences(line){
+  var s = String(line == null ? '' : line).trim();
+  if(!s) return [];
+  var out = [], buf = '', i = 0, ch = Array.from(s);
+  var CJK_END = /[。！？‼⁇⁈]/, LAT_END = /[.!?…]/;
+  var TAIL = /[。！？….!?"'”’）)\]」』】》]/;
+  while(i < ch.length){
+    var c = ch[i]; buf += c; i++;
+    var cjk = CJK_END.test(c), lat = LAT_END.test(c);
+    if(!cjk && !lat) continue;
+    while(i < ch.length && TAIL.test(ch[i])){ buf += ch[i]; i++; }
+    if(!cjk){
+      /* Latin terminator: split only before whitespace / end of line,
+         and not after abbreviations, decimals or list numbers like "1." */
+      if(i < ch.length && !/\s/.test(ch[i])) continue;
+      var t = buf.trim();
+      if(ABBR_RE.test(t) || /^\(?(?:\d{1,3}|[A-Za-z])[.)]$/.test(t)) continue;
+    }
+    out.push(buf.trim()); buf = '';
+    while(i < ch.length && /\s/.test(ch[i])) i++;
+  }
+  if(buf.trim()) out.push(buf.trim());
+  return out;
+}
+
+/* Text -> [{orig, sents}] per line (blank lines kept with sents = []). */
+function segmentText(text){
+  return String(text == null ? '' : text).split(/\r\n|\r|\n/).map(function(l){
+    return {orig: l, sents: splitSentences(l)};
+  });
+}
+
+/* Join translated sentences of one line (no space for Chinese / Japanese). */
+function joinSents(arr, tgt){
+  var nospace = /^(zh|ja)/i.test(tgt || '');
+  return arr.join(nospace ? '' : ' ');
+}
+
+/* Strings that are only digits / punctuation are passed through untouched. */
+function needsTranslate(t){ return !!(t && /[^\s\d.,%\-+:\/()]/.test(t)); }
+
+/* lines: [{orig, pairs:[{o,t}], keep?}]
+   mode: 'trans' | 'both' | 'orig'
+   o: {layout:'stack'|'inline', blank:boolean, prefix:string} */
+function buildTxt(lines, mode, o, tgt){
+  o = o || {};
+  var out = [];
+  function pairLines(p){
+    var tt = (o.prefix || '') + p.t;
+    return o.layout === 'inline' ? [p.o + '  ｜  ' + tt] : [p.o, tt];
+  }
+  lines.forEach(function(L){
+    if(L.keep){ out.push(L.orig); return; }
+    var pairs = L.pairs || [];
+    if(mode === 'orig'){ out.push(L.orig); return; }
+    if(mode === 'trans'){
+      out.push(pairs.length ? joinSents(pairs.map(function(p){ return p.t; }), tgt) : '');
+      return;
+    }
+    if(!pairs.length){ if(!o.blank) out.push(''); return; }
+    pairs.forEach(function(p){
+      pairLines(p).forEach(function(x){ out.push(x); });
+      if(o.blank) out.push('');
+    });
+  });
+  while(out.length && out[out.length - 1] === '') out.pop();
+  return out.join('\n');
+}
+
+/* Tolerant JSON reader for AI replies (fenced / surrounded by prose). */
+function parseJsonLoose(text){
+  var t = String(text == null ? '' : text).trim();
+  try{ return JSON.parse(t); }catch(e){}
+  var f = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if(f){ try{ return JSON.parse(f[1].trim()); }catch(e){} }
+  var a = t.search(/[\[{]/), b = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
+  if(a >= 0 && b > a){ try{ return JSON.parse(t.slice(a, b + 1)); }catch(e){} }
+  throw new Error('AI 回傳的內容不是有效的 JSON');
+}
+
+/* One OCR block {original, translated} -> line with per-sentence pairs when
+   both sides split into the same number of sentences. */
+function expandBlock(r){
+  var o = String(r && r.original != null ? r.original : '').trim();
+  var t = String(r && r.translated != null ? r.translated : '').trim();
+  if(!o && !t) return null;
+  var so = splitSentences(o), st = splitSentences(t);
+  var pairs = (so.length > 1 && so.length === st.length)
+    ? so.map(function(s, i){ return {o: s, t: st[i]}; })
+    : [{o: o, t: t}];
+  return {orig: o, pairs: pairs};
+}
+function linesFromBlocks(arr){
+  return (Array.isArray(arr) ? arr : []).map(expandBlock).filter(Boolean);
+}
+
+/* Clean a user-typed file name and make sure it ends with ext. */
+function safeFileName(name, ext){
+  var s = String(name || '').replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
+  if(ext && s.toLowerCase().slice(-ext.length) === ext.toLowerCase()){
+    s = s.slice(0, -ext.length).replace(/[. ]+$/, '');
+  }
+  if(!s) s = '翻譯結果';
+  if(/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(s)) s = '_' + s;
+  return s + (ext || '');
+}
+
+/* ---------- e-mail (.eml) ---------- */
+function b64ToBytes(s){
+  var bin = atob(String(s).replace(/[^A-Za-z0-9+\/=]/g, ''));
+  var u = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function bytesToB64(u){
+  var s = '';
+  for(var i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function qpToBytes(s, isHeader){
+  s = String(s);
+  s = isHeader ? s.replace(/_/g, ' ') : s.replace(/=\r?\n/g, '');
+  var out = [], enc = new TextEncoder();
+  for(var i = 0; i < s.length; i++){
+    var c = s.charAt(i);
+    if(c === '=' && /^[0-9A-Fa-f]{2}$/.test(s.substr(i + 1, 2))){
+      out.push(parseInt(s.substr(i + 1, 2), 16)); i += 2;
+    } else {
+      var cp = s.codePointAt(i);
+      if(cp < 128) out.push(cp);
+      else {
+        var b = enc.encode(String.fromCodePoint(cp));
+        for(var k = 0; k < b.length; k++) out.push(b[k]);
+        if(cp > 0xffff) i++;
+      }
+    }
+  }
+  return new Uint8Array(out);
+}
+function decodeBytes(bytes, charset){
+  try{ return new TextDecoder(String(charset || 'utf-8').toLowerCase()).decode(bytes); }
+  catch(e){ return new TextDecoder('utf-8').decode(bytes); }
+}
+function decodeMimeWords(s){
+  s = String(s || '').replace(/(\?=)\s+(=\?)/g, '$1$2');
+  return s.replace(/=\?([^?]+)\?([bBqQ])\?([^?]*)\?=/g, function(_, cs, enc, txt){
+    try{ return decodeBytes(/b/i.test(enc) ? b64ToBytes(txt) : qpToBytes(txt, true), cs); }
+    catch(e){ return txt; }
+  });
+}
+function parseHeaders(block){
+  var h = {};
+  String(block || '').replace(/\r?\n[ \t]+/g, ' ').split(/\r?\n/).forEach(function(line){
+    var m = line.match(/^([A-Za-z][A-Za-z0-9\-]*):\s*(.*)$/);
+    if(m){ var k = m[1].toLowerCase(); if(!(k in h)) h[k] = m[2]; }
+  });
+  return h;
+}
+function splitHeaderBody(raw){
+  var m = String(raw).match(/\r?\n\r?\n/);
+  if(!m) return [String(raw), ''];
+  return [raw.slice(0, m.index), raw.slice(m.index + m[0].length)];
+}
+function decodeBody(body, h){
+  var cte = String(h['content-transfer-encoding'] || '').toLowerCase().trim();
+  var cs = ((h['content-type'] || '').match(/charset="?([^";\s]+)/i) || [])[1] || 'utf-8';
+  var bytes;
+  if(cte === 'base64') bytes = b64ToBytes(body);
+  else if(cte === 'quoted-printable') bytes = qpToBytes(body, false);
+  else bytes = new TextEncoder().encode(body);
+  return decodeBytes(bytes, cs);
+}
+function htmlToText(h){
+  return String(h || '')
+    .replace(/<(style|script)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function walkMime(raw){
+  var hb = splitHeaderBody(raw), h = parseHeaders(hb[0]), body = hb[1];
+  var ct = h['content-type'] || 'text/plain';
+  var res = {plain: '', html: ''};
+  if(/^multipart\//i.test(ct)){
+    var bm = ct.match(/boundary="?([^";\s]+)"?/i);
+    if(!bm) return res;
+    body.split('--' + bm[1]).forEach(function(p){
+      if(!p.trim() || /^--/.test(p)) return;
+      var r = walkMime(p.replace(/^\r?\n/, ''));
+      if(!res.plain && r.plain) res.plain = r.plain;
+      if(!res.html && r.html) res.html = r.html;
+    });
+    return res;
+  }
+  if(/attachment/i.test(h['content-disposition'] || '')) return res;
+  if(/^text\/plain/i.test(ct)) res.plain = decodeBody(body, h);
+  else if(/^text\/html/i.test(ct)) res.html = decodeBody(body, h);
+  return res;
+}
+function parseEmlFull(raw){
+  raw = String(raw);
+  var h = parseHeaders(splitHeaderBody(raw)[0]);
+  var m = walkMime(raw);
+  var text = m.plain || htmlToText(m.html) || '';
+  function dh(k){ return decodeMimeWords(h[k] || ''); }
+  return {
+    headers: {from: dh('from'), to: dh('to'), cc: dh('cc'), date: h['date'] || '', subject: dh('subject')},
+    text: text.replace(/\r\n?/g, '\n')
+  };
+}
+function encodeHeaderValue(s){
+  s = String(s || '');
+  if(/^[\x20-\x7e]*$/.test(s)) return s;
+  var enc = new TextEncoder(), words = [], cur = [];
+  Array.from(s).forEach(function(c){
+    var b = enc.encode(c);
+    if(cur.length + b.length > 45){ words.push(cur); cur = []; }
+    for(var i = 0; i < b.length; i++) cur.push(b[i]);
+  });
+  if(cur.length) words.push(cur);
+  return words.map(function(w){ return '=?UTF-8?B?' + bytesToB64(new Uint8Array(w)) + '?='; }).join('\r\n ');
+}
+function buildEml(h, subjectT, bodyText){
+  var L = [];
+  if(h.from) L.push('From: ' + h.from);
+  if(h.to) L.push('To: ' + h.to);
+  if(h.cc) L.push('Cc: ' + h.cc);
+  if(h.date) L.push('Date: ' + h.date);
+  L.push('Subject: ' + encodeHeaderValue(subjectT));
+  L.push('MIME-Version: 1.0');
+  L.push('Content-Type: text/plain; charset=UTF-8');
+  L.push('Content-Transfer-Encoding: 8bit');
+  return L.join('\r\n') + '\r\n\r\n' + String(bodyText).replace(/\r?\n/g, '\r\n');
+}
+/* Outlook .msg is a binary OLE file: pull out the readable UTF-16 text runs. */
+function msgBestEffort(buf){
+  var txt = new TextDecoder('utf-16le').decode(buf);
+  var runs = txt.match(/[\t\n\r -~ -퟿]{6,}/g) || [];
+  return runs
+    .filter(function(r){ return !/__substg1\.0_|Root Entry|__properties_|__recip_|__attach_|__nameid_/i.test(r); })
+    .map(function(r){ return r.trim(); }).filter(Boolean).join('\n');
+}
+/*PURE-END*/
+
+
+/* ============================================================
+   2. CORE: utilities, settings, AI engine, Google engine, export
+   ============================================================ */
+function $(id){ return document.getElementById(id); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+var SAMPLE_ERR = {
+  not_granted: '尚未允許此頁面使用 Claude',
+  rate_limited: '呼叫過於頻繁或已達用量上限，請稍後再試',
+  sampling_disabled: '此帳號目前無法使用 Claude',
+  images_unavailable: '此環境未開放圖片辨識',
+  image_rejected: '圖片格式或大小不符',
+  invalid_json: 'AI 回傳格式不正確，請重試',
+  upstream_error: '連線不穩，請重試',
+  session_expired: '登入已逾時，請重新整理頁面'
+};
+function errMsg(e){
+  if(!e) return '未知錯誤';
+  if(typeof e === 'string') return e;
+  if(e.code && SAMPLE_ERR[e.code]) return SAMPLE_ERR[e.code];
+  return String(e.message || e.code || e);
+}
+var toastTimer = null;
+function toast(msg, warn){
+  var el = $('toast');
+  if(!el){ console.log(msg); return; }
+  el.textContent = msg;
+  el.className = 'toast show' + (warn ? ' warn' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.className = 'toast'; }, warn ? 8000 : 4500);
+}
+
+/* ---------- environment + settings ---------- */
+var IN_CLAUDE = !!(window.claude && typeof window.claude.use === 'function');
+var CFG = {anthropicKey: '', model: 'claude-sonnet-5-5', gKey: '', autoFallback: true, remember: false};
+(function loadCfg(){
+  try{
+    var j = JSON.parse(localStorage.getItem('ai-translator-cfg') || '{}');
+    if(j && typeof j === 'object'){
+      ['anthropicKey', 'model', 'gKey'].forEach(function(k){ if(typeof j[k] === 'string' && j[k]) CFG[k] = j[k]; });
+      if(typeof j.autoFallback === 'boolean') CFG.autoFallback = j.autoFallback;
+      CFG.remember = !!(j.anthropicKey || j.gKey);
+    }
+    var legacy = localStorage.getItem('ai-translator-api-key');   /* key saved by the earlier offline version */
+    if(legacy && !CFG.anthropicKey){ CFG.anthropicKey = legacy; CFG.remember = true; }
+  }catch(e){}
+})();
+function saveCfg(){
+  try{
+    var o = {model: CFG.model, autoFallback: CFG.autoFallback};
+    if(CFG.remember){ o.anthropicKey = CFG.anthropicKey; o.gKey = CFG.gKey; }
+    localStorage.setItem('ai-translator-cfg', JSON.stringify(o));
+    if(!CFG.remember) localStorage.removeItem('ai-translator-api-key');
+  }catch(e){}
+}
+
+var engineSel = $('engineSel');
+var enginePill = $('engineStatus');
+var sampleFn = null, sampleImages = false, downloadsFn = null;
+
+function aiAvailable(){ return IN_CLAUDE ? !!sampleFn : !!CFG.anthropicKey; }
+function aiImagesAvailable(){ return IN_CLAUDE ? (!!sampleFn && sampleImages) : !!CFG.anthropicKey; }
+function textEngineReady(){ return engineSel.value === 'google' || aiAvailable(); }
+function engineNotReady(){
+  if(IN_CLAUDE){
+    toast('AI 引擎目前不可用（需允許此頁面使用 Claude），可先改選 Google 翻譯。', true);
+  } else {
+    openSettings();
+    toast('請先設定 Anthropic API 金鑰，或改選 Google 翻譯。', true);
+  }
+}
+function updateEnginePill(){
+  var ready, txt;
+  if(engineSel.value === 'google'){
+    ready = true;
+    txt = CFG.gKey ? 'Google 翻譯（官方 API）' : 'Google 翻譯（免金鑰，偶爾不穩）';
+  } else if(IN_CLAUDE){
+    ready = !!sampleFn;
+    txt = ready ? 'AI 翻譯引擎已就緒' : 'AI 引擎不可用';
+  } else {
+    ready = !!CFG.anthropicKey;
+    txt = ready ? ('AI 翻譯引擎已就緒（' + CFG.model.replace('claude-', '') + '）') : '尚未設定 API 金鑰';
+  }
+  enginePill.textContent = txt;
+  enginePill.className = 'status-pill ' + (ready ? 'ok' : 'bad');
+}
+engineSel.addEventListener('change', updateEnginePill);
+
+(async function initEnvironment(){
+  if(IN_CLAUDE){
+    try{
+      sampleFn = await window.claude.use('sample');
+      if(sampleFn){
+        try{ var lim = await sampleFn.limits(); sampleImages = !!(lim && lim.images); }catch(e){}
+      }
+    }catch(e){ sampleFn = null; }
+    try{ downloadsFn = await window.claude.use('downloads'); }catch(e){ downloadsFn = null; }
+  }
+  updateEnginePill();
+})();
+
+/* ---------- settings dialog ---------- */
+function openSettings(){
+  $('rowAnthropic').style.display = IN_CLAUDE ? 'none' : '';
+  $('setAnthropicKey').value = CFG.anthropicKey;
+  var sm = $('setModel');
+  sm.value = CFG.model;
+  if(sm.value !== CFG.model) sm.value = 'claude-sonnet-5-5';
+  $('setGKey').value = CFG.gKey;
+  $('setRemember').checked = CFG.remember;
+  $('setFallback').checked = CFG.autoFallback;
+  $('setModal').classList.add('show');
+}
+function closeSettings(){
+  $('setModal').classList.remove('show');
+  try{ localStorage.setItem('ai-translator-seen', '1'); }catch(e){}
+}
+$('btnSettings').addEventListener('click', openSettings);
+$('btnSetClose').addEventListener('click', closeSettings);
+$('btnSetSave').addEventListener('click', function(){
+  CFG.anthropicKey = $('setAnthropicKey').value.trim();
+  CFG.model = $('setModel').value;
+  CFG.gKey = $('setGKey').value.trim();
+  CFG.remember = $('setRemember').checked;
+  CFG.autoFallback = $('setFallback').checked;
+  saveCfg();
+  closeSettings();
+  updateEnginePill();
+  toast('設定已儲存');
+});
+(function firstRun(){
+  if(IN_CLAUDE) return;
+  if(!CFG.anthropicKey){
+    engineSel.value = 'google';            /* no key yet: Google works out of the box */
+    var seen = false; try{ seen = !!localStorage.getItem('ai-translator-seen'); }catch(e){}
+    if(!seen){ try{ localStorage.setItem('ai-translator-seen','1'); }catch(e){} toast('目前使用免費的 Google 翻譯；想用 AI 翻譯可到右上角「設定」填入自己的 API 金鑰'); }
+  }
+  updateEnginePill();
+})();
+
+/* ---------- AI engine (Claude) ---------- */
+async function callAIJson(prompt, imgs){
+  imgs = imgs || [];
+  if(IN_CLAUDE){
+    if(!sampleFn) throw new Error('AI 引擎尚未就緒');
+    var o = {modelTier: 'default'};
+    if(imgs.length) o.images = imgs.map(function(x){ return x.blob; });
+    return await sampleFn.json(prompt, o);
+  }
+  if(!CFG.anthropicKey){ openSettings(); throw new Error('尚未設定 Anthropic API 金鑰'); }
+  var content = [];
+  imgs.forEach(function(x){ content.push({type: 'image', source: {type: 'base64', media_type: x.mime, data: x.b64}}); });
+  content.push({type: 'text', text: prompt});
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': CFG.anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({model: CFG.model, max_tokens: 8192, messages: [{role: 'user', content: content}]})
+  });
+  if(!resp.ok){
+    var t = await resp.text().catch(function(){ return ''; });
+    var hint = resp.status === 401 ? '（金鑰無效）' : resp.status === 404 ? '（找不到模型，請到「設定」改選模型）' : resp.status === 429 ? '（用量或速率限制）' : '';
+    throw new Error('API 呼叫失敗，狀態碼 ' + resp.status + hint + ' ' + t.slice(0, 160));
+  }
+  var data = await resp.json();
+  var text = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('\n');
+  return parseJsonLoose(text);
+}
+
+/* texts -> translated texts (same order). Failed chunks keep the original text. */
+async function aiTranslateBatch(texts, opts){
+  opts = opts || {};
+  var srcName = opts.sourceLang === 'auto' ? '（請自動偵測原文語言，原文可能夾雜多種語言）' : langName(opts.sourceLang);
+  var tgtName = langName(opts.targetLang);
+  var out = new Array(texts.length), failed = 0, needed = 0, lastErr = null;
+  var CHUNK = 40, CHARS = 4000, chunks = [], cur = [], curLen = 0, i;
+  for(i = 0; i < texts.length; i++){
+    var t = texts[i] || '';
+    if(cur.length >= CHUNK || (curLen + t.length) > CHARS){
+      if(cur.length){ chunks.push(cur); cur = []; curLen = 0; }
+    }
+    cur.push(i); curLen += t.length;
+  }
+  if(cur.length) chunks.push(cur);
+
+  var done = 0;
+  for(var c = 0; c < chunks.length; c++){
+    var idxs = chunks[c];
+    var items = idxs.map(function(k){ return {i: k, t: texts[k]}; });
+    var toSend = items.filter(function(it){ return needsTranslate(it.t); });
+    items.forEach(function(it){ if(!needsTranslate(it.t)) out[it.i] = it.t; });
+    if(toSend.length){
+      needed += toSend.length;
+      var prompt = '你是專業的多語言翻譯引擎。把下列 JSON 陣列中每個項目的 "t" 從' + srcName + '翻譯成' + tgtName + '。\n' +
+        '規則：\n1) 每個項目通常是一句話，請依前後項目的上下文做自然、專業、符合語境的翻譯；\n' +
+        '2) 數字、型號、代碼、網址、單位、專有名詞與縮寫保持原樣；\n3) 不要加解釋、不要合併或拆分項目；\n' +
+        '4) 回傳陣列的長度與每個 "i" 必須與輸入完全一致；\n5) 只回傳 JSON，不要任何前後說明或 markdown。\n\n輸入：\n' +
+        JSON.stringify(toSend) + '\n\n回傳格式：[{"i":數字,"t":"翻譯後文字"}, ...]';
+      var res = null;
+      for(var attempt = 0; attempt < 2 && !res; attempt++){
+        try{ res = await callAIJson(prompt); }
+        catch(e){
+          lastErr = e;
+          var m = errMsg(e);
+          if((e && (e.code === 'not_granted' || e.code === 'rate_limited' || e.code === 'sampling_disabled')) || /狀態碼 (401|403|404|429)/.test(m)) break;
+          await sleep(700);
+        }
+      }
+      var arr = Array.isArray(res) ? res : (res && res.items) || null;
+      if(arr){
+        var by = {};
+        arr.forEach(function(r){ if(r && typeof r.i !== 'undefined') by[r.i] = r.t; });
+        toSend.forEach(function(it){
+          if(typeof by[it.i] === 'string' && by[it.i].length){ out[it.i] = by[it.i]; }
+          else { out[it.i] = it.t; failed++; }
+        });
+      } else {
+        toSend.forEach(function(it){ out[it.i] = it.t; });
+        failed += toSend.length;
+      }
+    }
+    done += idxs.length;
+    if(opts.onProgress) opts.onProgress(done, texts.length);
+  }
+  aiTranslateBatch.lastFailed = failed;
+  aiTranslateBatch.lastNeeded = needed;
+  aiTranslateBatch.lastError = lastErr;
+  return out;
+}
+
+/* ---------- images ---------- */
+function loadImageToCanvas(file, maxSide){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var s = Math.min(1, (maxSide || 3200) / Math.max(w, h));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+      var x = c.getContext('2d');
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('無法讀取這張圖片（格式不支援，請改用 JPG / PNG / WEBP）')); };
+    img.src = url;
+  });
+}
+/* canvas -> {blob, b64, mime}; small crops stay PNG (crisp text), big ones become JPEG */
+function canvasToPrepared(canvas, maxSide){
+  return new Promise(function(resolve, reject){
+    var s = Math.min(1, (maxSide || 1800) / Math.max(canvas.width, canvas.height));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(canvas.width * s)); c.height = Math.max(1, Math.round(canvas.height * s));
+    var x = c.getContext('2d');
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+    x.drawImage(canvas, 0, 0, c.width, c.height);
+    var png = (c.width * c.height) < 1500000;
+    var mime = png ? 'image/png' : 'image/jpeg';
+    var b64 = c.toDataURL(mime, 0.92).split(',')[1];
+    c.toBlob(function(b){ b ? resolve({blob: b, b64: b64, mime: mime}) : reject(new Error('圖片轉換失敗')); }, mime, 0.92);
+  });
+}
+/* OCR + translate; returns lines [{orig, pairs:[{o,t}]}] one sentence / label per pair */
+async function aiTranslateImage(prepared, sourceLang, targetLang){
+  var srcName = sourceLang === 'auto' ? '自動偵測' : langName(sourceLang);
+  var tgtName = langName(targetLang);
+  var prompt = '請辨識這張圖片中的所有文字（依閱讀順序：由上到下、由左到右），來源語言：' + srcName + '，並翻譯成' + tgtName + '。' +
+    '請「每一句話或每一個獨立的文字標籤」各拆成一個項目，不要把多句話合併在同一項。' +
+    '格式：[{"original":"原文一句","translated":"對應的一句譯文"}]。只回傳 JSON 陣列，不要任何說明；若圖片中沒有文字，回傳 []。';
+  var res = await callAIJson(prompt, [prepared]);
+  return linesFromBlocks(Array.isArray(res) ? res : (res && res.items) || []);
+}
+
+/* ---------- Google engine ---------- */
+var G = {ep: 0, cache: new Map()};
+var G_EPS = [
+  {base: 'https://translate.googleapis.com/translate_a/single', params: {client: 'gtx', dt: 't'}},
+  {base: 'https://translate.google.com/translate_a/single', params: {client: 'gtx', dt: 't'}},
+  {base: 'https://clients5.google.com/translate_a/t', params: {client: 'dict-chrome-ex'}}
+];
+function gParse(data){
+  if(Array.isArray(data)){
+    if(Array.isArray(data[0])){
+      var first = data[0];
+      if(Array.isArray(first[0])) return first.map(function(s){ return (s && s[0]) || ''; }).join('');
+      if(typeof first[0] === 'string') return first[0];
+    }
+    if(typeof data[0] === 'string') return data[0];
+  } else if(data && Array.isArray(data.sentences)){
+    return data.sentences.map(function(s){ return s.trans || ''; }).join('');
+  }
+  throw new Error('unexpected-format');
+}
+async function gFetchOne(ep, text, sl, tl){
+  var qs = new URLSearchParams(Object.assign({sl: sl, tl: tl, ie: 'UTF-8', oe: 'UTF-8'}, ep.params)).toString();
+  var enc = encodeURIComponent(text), resp;
+  if(enc.length < 1800){
+    resp = await fetch(ep.base + '?' + qs + '&q=' + enc);
+  } else {
+    resp = await fetch(ep.base + '?' + qs, {method: 'POST', headers: {'content-type': 'application/x-www-form-urlencoded;charset=UTF-8'}, body: 'q=' + enc});
+  }
+  if(!resp.ok){ var e = new Error('http-' + resp.status); e.status = resp.status; throw e; }
+  return gParse(await resp.json());
+}
+async function gTranslateOne(text, sl, tl){
+  var key = sl + '|' + tl + '|' + text;
+  if(G.cache.has(key)) return G.cache.get(key);
+  var lastErr = null;
+  for(var round = 0; round < 2; round++){
+    for(var k = 0; k < G_EPS.length; k++){
+      var idx = (G.ep + k) % G_EPS.length;
+      try{
+        var r = await gFetchOne(G_EPS[idx], text, sl, tl);
+        G.ep = idx; G.cache.set(key, r);
+        return r;
+      }catch(e){
+        lastErr = e;
+        if(e && (e.status === 429 || e.status >= 500)) await sleep(700 + Math.random() * 600);
+      }
+    }
+    await sleep(350);
+  }
+  throw lastErr || new Error('google-failed');
+}
+/* Official Cloud Translation API (needs the user's own key; batches up to 100 strings) */
+async function gOfficial(texts, sl, tl){
+  var out = new Array(texts.length).fill(null), i = 0;
+  while(i < texts.length){
+    var start = i, group = [], chars = 0;
+    while(i < texts.length && group.length < 100 && (group.length === 0 || chars + texts[i].length < 20000)){
+      group.push(texts[i]); chars += texts[i].length; i++;
+    }
+    try{
+      var body = {q: group, target: tl, format: 'text'};
+      if(sl !== 'auto') body.source = sl;
+      var resp = await fetch('https://translation.googleapis.com/language/translate/v2?key=' + encodeURIComponent(CFG.gKey), {
+        method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)
+      });
+      if(!resp.ok) throw new Error('http-' + resp.status);
+      var data = await resp.json();
+      data.data.translations.forEach(function(t, k){ out[start + k] = t.translatedText; });
+    }catch(e){ gOfficial.lastError = e; }
+  }
+  return out;
+}
+async function googleBatch(texts, opts){
+  var sl = opts.sourceLang || 'auto', tl = opts.targetLang;
+  var out = texts.slice(), failed = [], total = texts.length, done = 0;
+  var uniq = new Map();
+  texts.forEach(function(t, i){
+    if(!needsTranslate(t)){ done++; return; }
+    if(!uniq.has(t)) uniq.set(t, []);
+    uniq.get(t).push(i);
+  });
+  var pending = Array.from(uniq.keys());
+  function tick(n){ done += n; if(opts.onProgress) opts.onProgress(done, total); }
+  if(CFG.gKey && pending.length){
+    var res = await gOfficial(pending, sl, tl), rest = [];
+    pending.forEach(function(k, j){
+      if(res[j] != null){ uniq.get(k).forEach(function(i){ out[i] = res[j]; }); tick(uniq.get(k).length); }
+      else rest.push(k);
+    });
+    if(rest.length === pending.length) toast('Google 官方 API 呼叫失敗（金鑰錯誤或尚未啟用 Cloud Translation API？），改用免金鑰端點。', true);
+    pending = rest;
+  }
+  var idx = 0, consecFail = 0, anyOk = false, aborted = false;
+  async function worker(){
+    while(idx < pending.length){
+      var k = pending[idx++];
+      var ids = uniq.get(k);
+      if(aborted){ ids.forEach(function(i){ failed.push(i); }); tick(ids.length); continue; }
+      try{
+        var r = await gTranslateOne(k, sl, tl);
+        ids.forEach(function(i){ out[i] = r; });
+        anyOk = true; consecFail = 0;
+      }catch(e){
+        ids.forEach(function(i){ failed.push(i); });
+        if(++consecFail >= 6 && !anyOk) aborted = true;      /* endpoint blocked: stop hammering it */
+      }
+      tick(ids.length);
+      await sleep(50);
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  failed.sort(function(a, b){ return a - b; });
+  return {out: out, failed: failed};
+}
+
+/* One entry point for every plain-text translation (text / Excel / Word / PDF / mail). */
+async function translateBatch(texts, opts){
+  opts = opts || {};
+  if(engineSel.value === 'google'){
+    var g = await googleBatch(texts, opts);
+    if(g.failed.length){
+      if(CFG.autoFallback && aiAvailable()){
+        var sub = g.failed.map(function(i){ return texts[i]; });
+        var ai = await aiTranslateBatch(sub, {sourceLang: opts.sourceLang, targetLang: opts.targetLang});
+        g.failed.forEach(function(i, k){ g.out[i] = ai[k]; });
+        toast('Google 翻譯有 ' + g.failed.length + ' 句失敗，已自動改用 AI 補譯。');
+      } else {
+        toast('Google 翻譯有 ' + g.failed.length + ' 句失敗，已保留原文。可在「設定」填入 Google Cloud 金鑰、開啟自動補譯，或改選 AI 翻譯。', true);
+      }
+    }
+    return g.out;
+  }
+  if(!aiAvailable()){ engineNotReady(); throw new Error('AI 引擎尚未就緒'); }
+  var r = await aiTranslateBatch(texts, opts);
+  if(aiTranslateBatch.lastNeeded && aiTranslateBatch.lastFailed >= aiTranslateBatch.lastNeeded && aiTranslateBatch.lastError){
+    throw aiTranslateBatch.lastError;                    /* nothing was translated: tell the user why */
+  }
+  if(aiTranslateBatch.lastFailed) toast('有 ' + aiTranslateBatch.lastFailed + ' 句翻譯失敗，已保留原文，可再按一次重試。', true);
+  return r;
+}
+
+/* ---------- saving files ---------- */
+async function saveFile(filename, data, mime){
+  var blob = (data instanceof Blob) ? data : new Blob([data], {type: mime || 'application/octet-stream'});
+  if(downloadsFn){
+    try{ await downloadsFn.save({filename: filename, data: blob}); return true; }
+    catch(e){
+      if(e && e.code === 'declined') return false;       /* viewer said no: not an error */
+    }
+  }
+  try{
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    return true;
+  }catch(e){
+    toast('下載失敗：' + errMsg(e), true);
+    return false;
+  }
+}
+
+/* ---------- export dialog (output version + custom file name) ---------- */
+var EX = {cfg: null, mode: 'trans', fi: 0, touched: false};
+var EX_MODES = {trans: '僅翻譯內容', both: '原文＋翻譯（逐句對照）', orig: '僅原文'};
+function exPrefs(){ try{ return JSON.parse(localStorage.getItem('ai-translator-exp') || '{}') || {}; }catch(e){ return {}; } }
+function exSavePrefs(){
+  try{ localStorage.setItem('ai-translator-exp', JSON.stringify({mode: EX.mode, layout: $('exLayout').value, blank: $('exBlank').checked, prefix: $('exPrefix').value})); }catch(e){}
+}
+function exFmt(){ return EX.cfg.formats[EX.fi]; }
+function exOpts(){ return {layout: $('exLayout').value, blank: $('exBlank').checked, prefix: $('exPrefix').value}; }
+function nameSet(base){
+  return {trans: base + '-' + langFile(tgtSel.value), both: base + '-雙語對照', orig: base + '-原文'};
+}
+function openExport(cfg){
+  EX.cfg = cfg; EX.fi = 0; EX.touched = false;
+  var p = exPrefs();
+  $('exLayout').value = p.layout || 'stack';
+  $('exBlank').checked = p.blank !== false;
+  $('exPrefix').value = p.prefix || '';
+  EX.mode = p.mode || 'trans';
+  $('exTitle').textContent = cfg.title || '匯出翻譯結果';
+  var sel = $('exFmt'); sel.textContent = '';
+  cfg.formats.forEach(function(f, i){
+    var o = document.createElement('option'); o.value = String(i); o.textContent = f.label || f.ext; sel.appendChild(o);
+  });
+  $('exFmtRow').style.display = cfg.formats.length > 1 ? '' : 'none';
+  exRefresh(true);
+  $('exModal').classList.add('show');
+  setTimeout(function(){ try{ $('exName').focus(); $('exName').select(); }catch(e){} }, 30);
+}
+function closeExport(){ $('exModal').classList.remove('show'); }
+function exRefresh(resetName){
+  var f = exFmt(), modes = f.modes || null;
+  if(!modes) EX.mode = 'trans';
+  else if(modes.indexOf(EX.mode) < 0) EX.mode = modes[0];
+  var box = $('exModeBox'); box.textContent = '';
+  $('exModeRow').style.display = modes && modes.length > 1 ? '' : 'none';
+  if(modes) modes.forEach(function(m){
+    var lab = document.createElement('label'); lab.className = 'opt' + (m === EX.mode ? ' on' : '');
+    var r = document.createElement('input'); r.type = 'radio'; r.name = 'exMode'; r.value = m; r.checked = (m === EX.mode);
+    r.addEventListener('change', function(){ EX.mode = m; exRefresh(!EX.touched); });
+    lab.appendChild(r); lab.appendChild(document.createTextNode(' ' + EX_MODES[m]));
+    box.appendChild(lab);
+  });
+  $('exBothOpts').style.display = (modes && EX.mode === 'both') ? '' : 'none';
+  $('exExt').textContent = f.ext;
+  if(resetName) $('exName').value = EX.cfg.names[EX.mode] || EX.cfg.names.trans || '翻譯結果';
+  var pw = $('exPreviewWrap');
+  if(f.text){
+    pw.style.display = '';
+    var t = f.text(EX.mode, exOpts()), ls = t.split('\n');
+    var shown = ls.slice(0, 16).join('\n');
+    if(shown.length > 1600) shown = shown.slice(0, 1600);
+    $('exPreview').textContent = shown + ((ls.length > 16 || t.length > shown.length) ? '\n…（預覽僅顯示開頭）' : '');
+    $('exHint').textContent = '';
+  } else {
+    pw.style.display = 'none';
+    $('exHint').textContent = '此格式為二進位檔案，沒有文字預覽。';
+  }
+}
+$('exFmt').addEventListener('change', function(){ EX.fi = parseInt(this.value, 10) || 0; exRefresh(!EX.touched); });
+$('exName').addEventListener('input', function(){ EX.touched = true; });
+['exLayout', 'exBlank'].forEach(function(id){ $(id).addEventListener('change', function(){ exRefresh(false); }); });
+$('exPrefix').addEventListener('input', function(){ exRefresh(false); });
+$('exCancel').addEventListener('click', closeExport);
+$('exOk').addEventListener('click', async function(){
+  var f = exFmt(), name = safeFileName($('exName').value, f.ext), data;
+  if(f.blob){ data = f.blob; }
+  else {
+    var txt = f.text(EX.mode, exOpts());
+    data = new Blob([(f.bom ? '﻿' : '') + txt], {type: f.mime || 'text/plain;charset=utf-8'});
+  }
+  exSavePrefs();
+  var ok = await saveFile(name, data);
+  if(ok){ closeExport(); toast('已匯出：' + name); }
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){ closeExport(); $('setModal').classList.remove('show'); }
+});
+/* txt export helper shared by text / image / screen / mail tabs */
+function txtFormat(lines){
+  return {
+    ext: '.txt', label: '純文字 (.txt)', modes: ['trans', 'both', 'orig'], bom: true, mime: 'text/plain;charset=utf-8',
+    text: function(mode, o){ return buildTxt(lines, mode, o, tgtSel.value); }
+  };
+}
+
+/* ============================================================
+   3. TABS
+   ============================================================ */
+document.getElementById('tabBar').addEventListener('click', function(e){
+  var btn = e.target.closest('.tab-btn');
+  if(!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  document.querySelector('.panel[data-panel="'+btn.dataset.tab+'"]').classList.add('active');
+});
+
+/* progress helpers */
+function progress(prefix, done, total, label){
+  var pw = document.getElementById('pw'+prefix);
+  var pb = document.getElementById('pb'+prefix);
+  var pl = document.getElementById('pl'+prefix);
+  pw.classList.add('show');
+  var pct = total ? Math.round(done/total*100) : 0;
+  pb.style.width = pct+'%';
+  pl.textContent = (label||'翻譯中…') + ' ('+done+'/'+total+')';
+}
+function progressDone(prefix, label){
+  var pw = document.getElementById('pw'+prefix);
+  var pb = document.getElementById('pb'+prefix);
+  var pl = document.getElementById('pl'+prefix);
+  pb.style.width='100%';
+  pl.textContent = label || '完成';
+  setTimeout(function(){pw.classList.remove('show');}, 1600);
+}
+function baseName(filename){
+  var idx = filename.lastIndexOf('.');
+  return idx>0 ? filename.slice(0,idx) : filename;
+}
+function extName(filename){
+  var idx = filename.lastIndexOf('.');
+  return idx>0 ? filename.slice(idx) : '';
+}
+function outName(filename, ext){
+  return baseName(filename)+'-'+langName(tgtSel.value)+(ext||extName(filename));
+}
+function escapeXml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+
+
+/* ============================================================
+   4. SHARED RESULT HELPERS
+   ============================================================ */
+/* short language label for file names, e.g. 客戶文件-中文 */
+function langFile(code){
+  if(code === 'zh-TW') return '中文';
+  if(code === 'zh-CN') return '簡體中文';
+  var f = LANGS.find(function(l){ return l.code === code; });
+  if(!f) return code;
+  var parts = f.name.split(/\s+/);
+  return parts[1] || parts[0];
+}
+function renderPairs(box, lines, showOrig){
+  box.style.display = 'block';
+  box.textContent = '';
+  if(!lines || !lines.length){
+    var d = document.createElement('div'); d.className = 'note'; d.textContent = '未偵測到文字。'; box.appendChild(d);
+    return;
+  }
+  lines.forEach(function(L){
+    (L.pairs || []).forEach(function(p){
+      var row = document.createElement('div'); row.className = 'row' + (showOrig === false ? ' one' : '');
+      if(showOrig !== false){
+        var o = document.createElement('div'); o.className = 'orig'; o.textContent = p.o; row.appendChild(o);
+      }
+      var t = document.createElement('div'); t.className = 'trans'; t.textContent = p.t; row.appendChild(t);
+      box.appendChild(row);
+    });
+  });
+}
+function imagesNotAvailable(){
+  if(IN_CLAUDE) toast('此環境未開放圖片辨識。請改用下載的獨立版（需設定 Anthropic API 金鑰）。', true);
+  else { openSettings(); toast('圖片辨識需要 Anthropic API 金鑰，請先到「設定」填入。', true); }
+}
+
+/* ============================================================
+   4a. TEXT TAB  (sentence-level translation)
+   ============================================================ */
+var textState = {segs: null};
+$('btnTransText').addEventListener('click', async function(){
+  if(!textEngineReady()){ engineNotReady(); return; }
+  var input = $('textIn').value;
+  if(!input.trim()){ toast('請先輸入要翻譯的文字', true); return; }
+  var segs = segmentText(input), flat = [];
+  segs.forEach(function(s){ s.sents.forEach(function(x){ flat.push(x); }); });
+  var btn = this; btn.disabled = true;
+  try{
+    var out = await translateBatch(flat, {
+      sourceLang: srcSel.value, targetLang: tgtSel.value,
+      onProgress: function(d, t){ progress('Text', d, t); }
+    });
+    var k = 0;
+    segs.forEach(function(s){ s.pairs = s.sents.map(function(x){ return {o: x, t: out[k++]}; }); });
+    textState.segs = segs;
+    $('textOut').value = buildTxt(segs, 'trans', {}, tgtSel.value);
+    progressDone('Text', '翻譯完成');
+  }catch(e){
+    toast('翻譯失敗：' + errMsg(e), true);
+    progressDone('Text', '發生錯誤');
+  }
+  btn.disabled = false;
+});
+async function copyText(v){
+  try{ await navigator.clipboard.writeText(v); return true; }catch(e){}
+  try{
+    var ta = document.createElement('textarea'); ta.value = v; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); var ok = document.execCommand('copy'); ta.remove(); return ok;
+  }catch(e){ return false; }
+}
+$('btnCopyText').addEventListener('click', async function(){
+  var v = $('textOut').value;
+  if(!v.trim()){ toast('尚無翻譯結果', true); return; }
+  toast(await copyText(v) ? '已複製翻譯結果' : '複製失敗，請手動選取文字', false);
+});
+$('btnCopyBoth').addEventListener('click', async function(){
+  if(!textState.segs){ toast('尚無翻譯結果', true); return; }
+  var p = exPrefs();
+  var v = buildTxt(textState.segs, 'both', {layout: p.layout || 'stack', blank: p.blank !== false, prefix: p.prefix || ''}, tgtSel.value);
+  toast(await copyText(v) ? '已複製雙語對照' : '複製失敗，請改用「匯出」', false);
+});
+$('btnDlText').addEventListener('click', function(){
+  if(!textState.segs){ toast('尚無翻譯結果，請先按「開始翻譯」', true); return; }
+  openExport({title: '匯出文字翻譯', names: nameSet('翻譯文字'), formats: [txtFormat(textState.segs)]});
+});
+
+
+/* ============================================================
+   5. GENERIC DROPZONE WIRING
+   ============================================================ */
+function wireDropzone(dzId, inputId, onFile){
+  var dz = document.getElementById(dzId);
+  var input = document.getElementById(inputId);
+  dz.addEventListener('click', function(){ input.click(); });
+  input.addEventListener('change', function(){
+    if(input.files[0]) onFile(input.files[0]);
+  });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('drag'); });
+  dz.addEventListener('drop', function(e){
+    e.preventDefault(); dz.classList.remove('drag');
+    if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+  });
+}
+function showChip(containerId, filename, onRemove){
+  var c = document.getElementById(containerId);
+  c.innerHTML = '';
+  var chip = document.createElement('div');
+  chip.className = 'file-chip';
+  chip.innerHTML = '<span>📄 '+escapeXml(filename)+'</span>';
+  var rm = document.createElement('button');
+  rm.textContent = '✕';
+  rm.addEventListener('click', onRemove);
+  chip.appendChild(rm);
+  c.appendChild(chip);
+}
+
+
+
+/* ============================================================
+   6. IMAGE TAB  (OCR + translation, one pair per sentence / label)
+   ============================================================ */
+var imageState = {file: null, lines: null};
+wireDropzone('dzImage', 'fileImage', function(file){
+  imageState.file = file; imageState.lines = null;
+  var url = URL.createObjectURL(file);
+  $('imagePreviewWrap').innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:280px;border-radius:10px;border:1px solid var(--border-soft);margin-top:10px;">';
+  $('btnTransImage').disabled = false;
+  $('resImage').style.display = 'none';
+  $('btnDlImage').disabled = true;
+});
+$('btnTransImage').addEventListener('click', async function(){
+  if(!aiImagesAvailable()){ imagesNotAvailable(); return; }
+  var btn = this; btn.disabled = true;
+  progress('Image', 0, 1, '辨識並翻譯圖片中');
+  try{
+    var canvas = await loadImageToCanvas(imageState.file, 3200);
+    var prepared = await canvasToPrepared(canvas, 1800);
+    var lines = await aiTranslateImage(prepared, srcSel.value, tgtSel.value);
+    imageState.lines = lines;
+    renderPairs($('resImage'), lines, true);
+    $('btnDlImage').disabled = !lines.length;
+    progressDone('Image', '完成');
+  }catch(e){
+    console.error(e);
+    toast('圖片翻譯失敗：' + errMsg(e), true);
+    progressDone('Image', '發生錯誤');
+  }
+  btn.disabled = false;
+});
+$('btnDlImage').addEventListener('click', function(){
+  if(!imageState.lines || !imageState.lines.length) return;
+  openExport({title: '匯出圖片翻譯', names: nameSet(baseName(imageState.file.name)), formats: [txtFormat(imageState.lines)]});
+});
+
+/* ============================================================
+   7. EXCEL TAB
+   ============================================================ */
+var excelState = {file:null, wb:null, outBlob:null};
+wireDropzone('dzExcel','fileExcel', function(file){
+  excelState.file = file;
+  showChip('excelChip', file.name, function(){
+    excelState.file=null; excelState.wb=null;
+    document.getElementById('excelChip').innerHTML='';
+    document.getElementById('btnTransExcel').disabled = true;
+    document.getElementById('btnDlExcel').disabled = true;
+  });
+  document.getElementById('btnTransExcel').disabled = false;
+  document.getElementById('btnDlExcel').disabled = true;
+});
+document.getElementById('btnTransExcel').addEventListener('click', async function(){
+  if(!textEngineReady()){ engineNotReady(); return; }
+  var btn = this; btn.disabled = true;
+  try{
+    var buf = await excelState.file.arrayBuffer();
+    var wb = XLSX.read(buf, {type:'array', cellStyles:true, bookVBA:true});
+    var texts = [];
+    var refs = [];
+    wb.SheetNames.forEach(function(sn){
+      var ws = wb.Sheets[sn];
+      Object.keys(ws).forEach(function(cellRef){
+        if(cellRef[0]==='!') return;
+        var cell = ws[cellRef];
+        if(cell && cell.t === 's' && typeof cell.v === 'string' && cell.v.trim()){
+          texts.push(cell.v);
+          refs.push({sheet:sn, ref:cellRef});
+        }
+      });
+    });
+    if(!texts.length){
+      toast('此檔案中沒有可翻譯的文字內容', true);
+      btn.disabled = false; return;
+    }
+    var out = await translateBatch(texts, {
+      sourceLang: srcSel.value, targetLang: tgtSel.value,
+      onProgress: function(d,t){ progress('Excel', d, t); }
+    });
+    refs.forEach(function(r, idx){
+      var cell = wb.Sheets[r.sheet][r.ref];
+      cell.v = out[idx];
+      if(cell.w) cell.w = out[idx];
+    });
+    var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array', cellStyles:true});
+    excelState.outBlob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    document.getElementById('btnDlExcel').disabled = false;
+    progressDone('Excel','翻譯完成，共處理 '+texts.length+' 個儲存格');
+  }catch(e){
+    console.error(e);
+    toast('處理失敗：'+errMsg(e), true);
+    progressDone('Excel','發生錯誤');
+  }
+  btn.disabled = false;
+});
+document.getElementById('btnDlExcel').addEventListener('click', async function(){
+  if(!excelState.outBlob) return;
+  openExport({
+    title:'匯出 Excel',
+    names:{trans: baseName(excelState.file.name)+'-'+langFile(tgtSel.value)},
+    formats:[{ext:'.xlsx', label:'Excel 活頁簿 (.xlsx)', blob: excelState.outBlob}]
+  });
+});
+
+
+/* ============================================================
+   8. WORD TAB  (mammoth -> html -> translate text nodes -> minimal docx writer)
+   ============================================================ */
+var wordState = {file:null, outBlob:null};
+wireDropzone('dzWord','fileWord', function(file){
+  wordState.file = file;
+  showChip('wordChip', file.name, function(){
+    wordState.file=null;
+    document.getElementById('wordChip').innerHTML='';
+    document.getElementById('btnTransWord').disabled = true;
+    document.getElementById('btnDlWord').disabled = true;
+  });
+  document.getElementById('btnTransWord').disabled = false;
+  document.getElementById('btnDlWord').disabled = true;
+});
+
+function collectTextNodes(root){
+  var nodes = [];
+  var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  var n;
+  while((n = walker.nextNode())){
+    if(n.nodeValue && n.nodeValue.trim()) nodes.push(n);
+  }
+  return nodes;
+}
+
+/* Build minimal .docx from a parsed HTML body element */
+function buildDocxFromHtml(bodyEl){
+  function runsFromInline(node, fmt){
+    var runs = [];
+    node.childNodes.forEach(function(child){
+      if(child.nodeType === 3){
+        if(child.nodeValue) runs.push({t: child.nodeValue, b: fmt.b, i: fmt.i, u: fmt.u});
+      } else if(child.nodeType === 1){
+        var tag = child.tagName.toLowerCase();
+        if(tag === 'br'){ runs.push({brk:true}); return; }
+        var nf = {b: fmt.b || tag==='b' || tag==='strong', i: fmt.i || tag==='i' || tag==='em', u: fmt.u || tag==='u'};
+        runs = runs.concat(runsFromInline(child, nf));
+      }
+    });
+    return runs;
+  }
+  function runXml(r){
+    if(r.brk) return '<w:r><w:br/></w:r>';
+    var rpr = '';
+    if(r.b || r.i || r.u){
+      rpr = '<w:rPr>'+(r.b?'<w:b/>':'')+(r.i?'<w:i/>':'')+(r.u?'<w:u w:val="single"/>':'')+'</w:rPr>';
+    }
+    return '<w:r>'+rpr+'<w:t xml:space="preserve">'+escapeXml(r.t)+'</w:t></w:r>';
+  }
+  function paraXml(runs, styleId){
+    var ppr = styleId ? '<w:pPr><w:pStyle w:val="'+styleId+'"/></w:pPr>' : '';
+    return '<w:p>'+ppr+runs.map(runXml).join('')+'</w:p>';
+  }
+  var bodyXml = '';
+  function walkBlock(el){
+    Array.from(el.children).forEach(function(child){
+      var tag = child.tagName.toLowerCase();
+      if(/^h[1-6]$/.test(tag)){
+        var runs = runsFromInline(child, {});
+        bodyXml += paraXml(runs.length?runs:[{t:''}], 'Heading'+tag[1]);
+      } else if(tag === 'p'){
+        var runs2 = runsFromInline(child, {});
+        bodyXml += paraXml(runs2.length?runs2:[{t:''}]);
+      } else if(tag === 'ul' || tag === 'ol'){
+        Array.from(child.children).forEach(function(li, idx){
+          var prefix = tag==='ul' ? '• ' : (idx+1)+'. ';
+          var runs3 = [{t:prefix}].concat(runsFromInline(li, {}));
+          bodyXml += paraXml(runs3);
+        });
+      } else if(tag === 'table'){
+        var rows = Array.from(child.querySelectorAll('tr'));
+        var trXml = rows.map(function(tr){
+          var cells = Array.from(tr.children).map(function(td){
+            var runs4 = runsFromInline(td, {});
+            return '<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>'+paraXml(runs4.length?runs4:[{t:''}])+'</w:tc>';
+          }).join('');
+          return '<w:tr>'+cells+'</w:tr>';
+        }).join('');
+        bodyXml += '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>'+
+          ['top','left','bottom','right','insideH','insideV'].map(function(s){return '<w:'+s+' w:val="single" w:sz="4" w:color="8C7A50"/>';}).join('')+
+          '</w:tblBorders></w:tblPr>'+trXml+'</w:tbl>';
+      } else if(tag === 'blockquote' || tag === 'div'){
+        walkBlock(child);
+      } else {
+        var runs5 = runsFromInline(child, {});
+        if(runs5.length) bodyXml += paraXml(runs5);
+      }
+    });
+  }
+  walkBlock(bodyEl);
+  if(!bodyXml) bodyXml = '<w:p/>';
+
+  var documentXml =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+'<w:body>'+bodyXml+
+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417"/></w:sectPr>'+
+'</w:body></w:document>';
+
+  var stylesXml =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+'<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:eastAsia="Microsoft JhengHei" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults>'+
+'<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'+
+[1,2,3,4,5,6].map(function(n){
+  var sz = [36,32,28,24,22,20][n-1];
+  return '<w:style w:type="paragraph" w:styleId="Heading'+n+'"><w:name w:val="heading '+n+'"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr><w:rPr><w:b/><w:sz w:val="'+sz+'"/></w:rPr></w:style>';
+}).join('')+
+'</w:styles>';
+
+  var contentTypes =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+'<Default Extension="xml" ContentType="application/xml"/>'+
+'<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'+
+'<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'+
+'</Types>';
+
+  var relsRoot =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'+
+'</Relationships>';
+
+  var relsDoc =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+'</Relationships>';
+
+  var zip = new JSZip();
+  zip.file('[Content_Types].xml', contentTypes);
+  zip.file('_rels/.rels', relsRoot);
+  zip.file('word/document.xml', documentXml);
+  zip.file('word/styles.xml', stylesXml);
+  zip.file('word/_rels/document.xml.rels', relsDoc);
+  return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+
+document.getElementById('btnTransWord').addEventListener('click', async function(){
+  if(!textEngineReady()){ engineNotReady(); return; }
+  var btn = this; btn.disabled = true;
+  try{
+    var buf = await wordState.file.arrayBuffer();
+    var result = await mammoth.convertToHtml({arrayBuffer: buf});
+    var container = document.createElement('div');
+    container.innerHTML = result.value;
+    var textNodes = collectTextNodes(container);
+    var texts = textNodes.map(function(n){ return n.nodeValue; });
+    if(!texts.length){
+      toast('此檔案中沒有可翻譯的文字內容', true);
+      btn.disabled = false; return;
+    }
+    var out = await translateBatch(texts, {
+      sourceLang: srcSel.value, targetLang: tgtSel.value,
+      onProgress: function(d,t){ progress('Word', d, t); }
+    });
+    textNodes.forEach(function(n, idx){ n.nodeValue = out[idx]; });
+    var blob = await buildDocxFromHtml(container);
+    wordState.outBlob = blob;
+    document.getElementById('btnDlWord').disabled = false;
+    progressDone('Word','翻譯完成，共處理 '+texts.length+' 個段落');
+  }catch(e){
+    console.error(e);
+    toast('處理失敗：'+errMsg(e), true);
+    progressDone('Word','發生錯誤');
+  }
+  btn.disabled = false;
+});
+document.getElementById('btnDlWord').addEventListener('click', async function(){
+  if(!wordState.outBlob) return;
+  openExport({
+    title:'匯出 Word',
+    names:{trans: baseName(wordState.file.name)+'-'+langFile(tgtSel.value)},
+    formats:[{ext:'.docx', label:'Word 文件 (.docx)', blob: wordState.outBlob}]
+  });
+});
+
+
+/* ============================================================
+   9. PDF TAB  (pdf.js render page -> image background + overlay translated text -> html)
+   ============================================================ */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+var pdfState = {file:null, outBlob:null};
+wireDropzone('dzPdf','filePdf', function(file){
+  pdfState.file = file;
+  showChip('pdfChip', file.name, function(){
+    pdfState.file=null;
+    document.getElementById('pdfChip').innerHTML='';
+    document.getElementById('btnTransPdf').disabled = true;
+    document.getElementById('btnDlPdf').disabled = true;
+  });
+  document.getElementById('btnTransPdf').disabled = false;
+  document.getElementById('btnDlPdf').disabled = true;
+});
+document.getElementById('btnTransPdf').addEventListener('click', async function(){
+  if(!textEngineReady()){ engineNotReady(); return; }
+  var btn = this; btn.disabled = true;
+  try{
+    var buf = await pdfState.file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    var allTexts = [];
+    var pageData = [];
+    progress('Pdf', 0, pdf.numPages, '讀取頁面中');
+    for(var p=1; p<=pdf.numPages; p++){
+      var page = await pdf.getPage(p);
+      var viewport = page.getViewport({scale: 1.6});
+      var canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      var ctx = canvas.getContext('2d');
+      await page.render({canvasContext: ctx, viewport: viewport}).promise;
+      var imgData = canvas.toDataURL('image/jpeg', 0.85);
+
+      var textContent = await page.getTextContent();
+      var items = textContent.items.map(function(it){
+        var tx = it.transform;
+        var scale = viewport.scale;
+        var x = tx[4]*scale;
+        var yTop = viewport.height - (tx[5]*scale) - (Math.hypot(tx[2],tx[3])*scale);
+        var fontSize = Math.hypot(tx[0],tx[1]) * scale;
+        return {str: it.str, x:x, y:yTop, fontSize: Math.max(fontSize,8), width: it.width*scale};
+      }).filter(function(it){ return it.str && it.str.trim(); });
+
+      items.forEach(function(it){ allTexts.push(it.str); });
+      pageData.push({w: viewport.width, h: viewport.height, img: imgData, items: items});
+      progress('Pdf', p, pdf.numPages, '讀取頁面中');
+    }
+    if(!allTexts.length){
+      toast('未能從此 PDF 擷取到文字（可能為掃描圖片檔）', true);
+      btn.disabled = false; return;
+    }
+    var translated = await translateBatch(allTexts, {
+      sourceLang: srcSel.value, targetLang: tgtSel.value,
+      onProgress: function(d,t){ progress('Pdf', d, t, '翻譯內容中'); }
+    });
+    var cursor = 0;
+    pageData.forEach(function(pg){
+      pg.items.forEach(function(it){ it.translated = translated[cursor++]; });
+    });
+
+    var pagesHtml = pageData.map(function(pg, idx){
+      var overlays = pg.items.map(function(it){
+        return '<div style="position:absolute;left:'+it.x.toFixed(1)+'px;top:'+(it.y - it.fontSize*0.15).toFixed(1)+'px;font-size:'+it.fontSize.toFixed(1)+'px;line-height:1.1;color:#a8471f;background:rgba(251,241,228,0.92);padding:0 2px;white-space:nowrap;max-width:'+(it.width>0?(it.width*1.6):400).toFixed(0)+'px;overflow:hidden;text-overflow:ellipsis;">'+escapeXml(it.translated)+'</div>';
+      }).join('');
+      return '<div class="page" style="position:relative;width:'+pg.w+'px;height:'+pg.h+'px;margin:0 auto 24px;box-shadow:0 2px 10px rgba(0,0,0,.25);">'+
+        '<img src="'+pg.img+'" style="width:100%;height:100%;display:block;">'+
+        overlays+'</div>';
+    }).join('');
+
+    var htmlDoc = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escapeXml(outName(pdfState.file.name,''))+'</title>'+
+      '<style>body{background:#DCCFAE;margin:0;padding:24px 0;font-family:"Noto Sans TC",sans-serif;} @media print{body{background:#fff;padding:0;} .page{box-shadow:none;margin:0;}}</style>'+
+      '</head><body>'+pagesHtml+'</body></html>';
+
+    pdfState.outBlob = new Blob([htmlDoc], {type:'text/html'});
+    document.getElementById('btnDlPdf').disabled = false;
+    progressDone('Pdf', '翻譯完成，共 '+pdf.numPages+' 頁、'+allTexts.length+' 個文字區塊');
+  }catch(e){
+    console.error(e);
+    toast('處理失敗：'+errMsg(e), true);
+    progressDone('Pdf','發生錯誤');
+  }
+  btn.disabled = false;
+});
+document.getElementById('btnDlPdf').addEventListener('click', async function(){
+  if(!pdfState.outBlob) return;
+  openExport({
+    title:'匯出 PDF 翻譯（版面一致的 HTML）',
+    names:{trans: baseName(pdfState.file.name)+'-'+langFile(tgtSel.value)},
+    formats:[{ext:'.html', label:'網頁檔 (.html)，開啟後可「列印→另存為 PDF」', blob: pdfState.outBlob}]
+  });
+});
+
+
+
+/* ============================================================
+   10. OUTLOOK MAIL TAB  (.eml fully decoded; .msg best effort)
+   ============================================================ */
+var mailState = {file: null, res: null};
+wireDropzone('dzMail', 'fileMail', function(file){
+  mailState.file = file; mailState.res = null;
+  showChip('mailChip', file.name, function(){
+    mailState.file = null; mailState.res = null;
+    $('mailChip').innerHTML = '';
+    $('btnTransMail').disabled = true;
+    $('btnDlMail').disabled = true;
+    $('resMail').style.display = 'none';
+  });
+  $('btnTransMail').disabled = false;
+  $('btnDlMail').disabled = true;
+});
+$('btnTransMail').addEventListener('click', async function(){
+  if(!textEngineReady()){ engineNotReady(); return; }
+  var btn = this; btn.disabled = true;
+  try{
+    var isMsg = /\.msg$/i.test(mailState.file.name);
+    var headers = {from: '', to: '', cc: '', date: '', subject: ''}, body = '';
+    if(isMsg){ body = msgBestEffort(await mailState.file.arrayBuffer()); }
+    else { var p = parseEmlFull(await mailState.file.text()); headers = p.headers; body = p.text; }
+    if(!body.trim() && !headers.subject.trim()){ toast('無法從此檔案讀出郵件內容', true); btn.disabled = false; return; }
+
+    var segs = segmentText(body), flat = [], hasSubj = !!headers.subject.trim();
+    if(hasSubj) flat.push(headers.subject.trim());
+    segs.forEach(function(s){ s.sents.forEach(function(x){ flat.push(x); }); });
+    var out = await translateBatch(flat, {
+      sourceLang: srcSel.value, targetLang: tgtSel.value,
+      onProgress: function(d, t){ progress('Mail', d, t); }
+    });
+    var k = 0, subjT = hasSubj ? out[k++] : '';
+    segs.forEach(function(s){ s.pairs = s.sents.map(function(x){ return {o: x, t: out[k++]}; }); });
+
+    var lines = [];
+    function hdr(label, v){ if(v) lines.push({orig: label + v, keep: true, pairs: []}); }
+    hdr('From: ', headers.from); hdr('To: ', headers.to); hdr('Cc: ', headers.cc); hdr('Date: ', headers.date);
+    if(lines.length) lines.push({orig: '', keep: true, pairs: []});
+    if(hasSubj){
+      lines.push({orig: '[Subject] ' + headers.subject.trim(), pairs: [{o: '[Subject] ' + headers.subject.trim(), t: '[Subject] ' + subjT}]});
+      lines.push({orig: '', pairs: []});
+    }
+    segs.forEach(function(s){ lines.push(s); });
+    mailState.res = {lines: lines, headers: headers, subjT: subjT, segs: segs, isMsg: isMsg};
+
+    var box = $('resMail');
+    box.style.display = 'block';
+    box.textContent = buildTxt(lines, 'trans', {}, tgtSel.value);
+    $('btnDlMail').disabled = false;
+    progressDone('Mail', '翻譯完成');
+  }catch(e){
+    console.error(e);
+    toast('處理失敗：' + errMsg(e), true);
+    progressDone('Mail', '發生錯誤');
+  }
+  btn.disabled = false;
+});
+$('btnDlMail').addEventListener('click', function(){
+  var r = mailState.res;
+  if(!r) return;
+  var formats = [txtFormat(r.lines)];
+  if(!r.isMsg && !IN_CLAUDE){
+    formats.push({
+      ext: '.eml', label: '郵件檔 (.eml)（僅譯文，可直接用 Outlook 開啟）', mime: 'message/rfc822',
+      text: function(){ return buildEml(r.headers, r.subjT, buildTxt(r.segs, 'trans', {}, tgtSel.value)); }
+    });
+  }
+  openExport({title: '匯出郵件翻譯', names: nameSet(baseName(mailState.file.name)), formats: formats});
+});
+
+
+/* ============================================================
+   11. SCREEN TAB  (live capture, region select, floating translation)
+   ============================================================ */
+var SC = {
+  stream: null, mode: null,            /* mode: 'live' (shared screen) | 'shot' (uploaded screenshot) */
+  sel: null, selPx: null,              /* selected region as fractions of the source */
+  lines: null,
+  busy: false, paused: false, pending: false,
+  worker: null, timer: null, prevSig: null, sigCanvas: null,
+  firstChangeAt: 0, changedAt: 0, lastRun: 0
+};
+var FL = null;                          /* floating window state */
+var SENS = {high: 0.006, mid: 0.015, low: 0.04};   /* share of changed cells that counts as "the screen changed" */
+
+function showCapErr(msg){ var b = $('captureErr'); b.textContent = msg; b.style.display = 'block'; }
+function clearCapErr(){ var b = $('captureErr'); b.style.display = 'none'; b.textContent = ''; }
+function srcEl(){ return SC.mode === 'live' ? $('liveVideo') : $('cropCanvas'); }
+function srcSize(){
+  var el = srcEl();
+  return SC.mode === 'live' ? {w: el.videoWidth, h: el.videoHeight} : {w: el.width, h: el.height};
+}
+function showStage(mode){
+  SC.mode = mode; SC.sel = null; SC.selPx = null; SC.prevSig = null;
+  $('cropStage').classList.add('show');
+  $('liveVideo').style.display = mode === 'live' ? 'block' : 'none';
+  $('cropCanvas').style.display = mode === 'shot' ? 'block' : 'none';
+  $('cropSel').style.display = 'none';
+  $('screenActions').style.display = 'flex';
+  $('liveOpts').style.display = mode === 'live' ? 'flex' : 'none';
+  $('btnStopCap').style.display = mode === 'live' ? '' : 'none';
+  $('btnFloat').style.display = mode === 'live' ? '' : 'none';
+  $('btnFloat').disabled = !!IN_CLAUDE;
+  $('btnFloat').title = IN_CLAUDE ? '懸浮即時翻譯需使用下載的獨立版（Claude.ai 內嵌頁面無法分享螢幕）' : '';
+  $('btnFloat').textContent = '🪟 開啟懸浮即時翻譯';
+}
+
+/* ---- start / stop screen sharing ---- */
+async function startCapture(){
+  clearCapErr();
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)){
+    showCapErr('這個瀏覽器不支援螢幕分享（手機瀏覽器通常不支援）。請改用電腦版 Chrome / Edge，或使用「上傳截圖圖片」。');
+    return;
+  }
+  if(window.isSecureContext === false){
+    showCapErr('頁面不是在安全環境開啟（需要 https、localhost，或直接開啟本機的 .html 檔），瀏覽器因此封鎖螢幕分享。請改用「上傳截圖圖片」。');
+    return;
+  }
+  stopCapture(true);
+  try{
+    var stream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: {ideal: 5, max: 15}}, audio: false});
+    var v = $('liveVideo');
+    v.muted = true; v.srcObject = stream;
+    await v.play();
+    SC.stream = stream;
+    stream.getVideoTracks()[0].addEventListener('ended', function(){ stopCapture(); toast('畫面分享已結束'); });
+    showStage('live');
+  }catch(e){
+    var m = String((e && e.message) || '');
+    if(e && e.name === 'NotAllowedError' && /policy|disallowed/i.test(m)){
+      showCapErr(IN_CLAUDE
+        ? '此頁面嵌在 Claude.ai 裡，瀏覽器不允許嵌入頁面分享螢幕。請下載「獨立版 HTML」，用 Chrome / Edge 直接開啟後再使用；或先用 Win+Shift+S（Mac：Cmd+Shift+4）截圖，再按「上傳截圖圖片」。'
+        : '瀏覽器的權限政策封鎖了螢幕分享（頁面可能被嵌在其他網頁中）。請在獨立的分頁開啟此檔案，或改用「上傳截圖圖片」。');
+    } else if(e && e.name === 'NotAllowedError'){
+      showCapErr('已取消或拒絕分享畫面。請再按一次「開始擷取畫面」，並在跳出的視窗中選擇要分享的螢幕或視窗；如果系統（macOS）擋住，請到「系統設定 → 隱私權與安全性 → 螢幕錄製」允許瀏覽器。');
+    } else {
+      showCapErr('無法開始螢幕分享（' + ((e && e.name) || '錯誤') + '）：' + m + '。可改用「上傳截圖圖片」。');
+    }
+  }
+}
+function stopCapture(silent){
+  stopLoop();
+  closeFloat(true);
+  if(SC.stream){ SC.stream.getTracks().forEach(function(t){ try{ t.stop(); }catch(e){} }); SC.stream = null; }
+  var v = $('liveVideo');
+  try{ v.pause(); v.srcObject = null; }catch(e){}
+  if(SC.mode === 'live'){
+    SC.mode = null;
+    $('cropStage').classList.remove('show');
+    $('screenActions').style.display = 'none';
+    $('liveOpts').style.display = 'none';
+  }
+}
+$('btnCapture').addEventListener('click', startCapture);
+$('btnStopCap').addEventListener('click', function(){ stopCapture(); });
+$('btnUploadShot').addEventListener('click', function(){ $('fileShot').click(); });
+$('fileShot').addEventListener('change', function(){
+  var file = this.files[0]; this.value = '';
+  if(!file) return;
+  clearCapErr();
+  stopCapture(true);
+  loadImageToCanvas(file, 3600).then(function(c){
+    var cv = $('cropCanvas');
+    cv.width = c.width; cv.height = c.height;
+    cv.getContext('2d').drawImage(c, 0, 0);
+    showStage('shot');
+  }).catch(function(e){ showCapErr(errMsg(e)); });
+});
+
+/* ---- drag to select a region (mouse / touch / pen) ---- */
+(function wireCrop(){
+  var stage = $('cropStage'), selEl = $('cropSel'), drag = null;
+  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+  function pos(e){
+    var r = srcEl().getBoundingClientRect();
+    return {x: clamp(e.clientX - r.left, 0, r.width), y: clamp(e.clientY - r.top, 0, r.height), w: r.width, h: r.height};
+  }
+  function draw(x, y, w, h){
+    selEl.style.left = x + 'px'; selEl.style.top = y + 'px';
+    selEl.style.width = w + 'px'; selEl.style.height = h + 'px';
+  }
+  stage.addEventListener('pointerdown', function(e){
+    if(!SC.mode) return;
+    e.preventDefault();
+    var p = pos(e); drag = {x: p.x, y: p.y};
+    try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+    selEl.style.display = 'block'; draw(p.x, p.y, 0, 0);
+  });
+  stage.addEventListener('pointermove', function(e){
+    if(!drag) return;
+    var p = pos(e);
+    var x = Math.min(p.x, drag.x), y = Math.min(p.y, drag.y), w = Math.abs(p.x - drag.x), h = Math.abs(p.y - drag.y);
+    draw(x, y, w, h);
+    SC.selPx = {x: x, y: y, w: w, h: h, cw: p.w, ch: p.h};
+  });
+  function end(){
+    if(!drag) return;
+    drag = null;
+    var s = SC.selPx;
+    if(s && s.w > 8 && s.h > 8){ SC.sel = {fx: s.x / s.cw, fy: s.y / s.ch, fw: s.w / s.cw, fh: s.h / s.ch}; }
+    else { SC.sel = null; selEl.style.display = 'none'; }
+    SC.selPx = null; SC.prevSig = null;
+  }
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+})();
+
+/* ---- crop the selected region (full resolution of the source) ---- */
+function cropToCanvas(){
+  var el = srcEl(), sz = srcSize();
+  var s = SC.sel || {fx: 0, fy: 0, fw: 1, fh: 1};
+  var sx = Math.round(s.fx * sz.w), sy = Math.round(s.fy * sz.h);
+  var sw = Math.max(1, Math.round(s.fw * sz.w)), sh = Math.max(1, Math.round(s.fh * sz.h));
+  var c = document.createElement('canvas'); c.width = sw; c.height = sh;
+  c.getContext('2d').drawImage(el, sx, sy, sw, sh, 0, 0, sw, sh);
+  return c;
+}
+
+/* ---- translate once ---- */
+$('btnTransSel').addEventListener('click', async function(){
+  if(!SC.mode) return;
+  if(!aiImagesAvailable()){ imagesNotAvailable(); return; }
+  var btn = this; btn.disabled = true;
+  progress('Screen', 0, 1, '辨識並翻譯中');
+  try{
+    var prepared = await canvasToPrepared(cropToCanvas(), 1800);
+    var lines = await aiTranslateImage(prepared, srcSel.value, tgtSel.value);
+    SC.lines = lines;
+    renderPairs($('resScreen'), lines, true);
+    $('btnDlScreen').disabled = !lines.length;
+    renderFloat();
+    progressDone('Screen', '完成');
+  }catch(e){
+    console.error(e);
+    toast('螢幕翻譯失敗：' + errMsg(e), true);
+    progressDone('Screen', '發生錯誤');
+  }
+  btn.disabled = false;
+});
+$('btnDlScreen').addEventListener('click', function(){
+  if(!SC.lines || !SC.lines.length) return;
+  openExport({title: '匯出螢幕翻譯', names: nameSet('螢幕翻譯'), formats: [txtFormat(SC.lines)]});
+});
+
+/* ---- change detection on the selected region ---- */
+function regionSig(){
+  var v = $('liveVideo'), s = SC.sel || {fx: 0, fy: 0, fw: 1, fh: 1};
+  var W = 128, H = 72;
+  var c = SC.sigCanvas || (SC.sigCanvas = document.createElement('canvas'));
+  c.width = W; c.height = H;
+  var ctx = c.getContext('2d', {willReadFrequently: true});
+  ctx.drawImage(v, s.fx * v.videoWidth, s.fy * v.videoHeight, s.fw * v.videoWidth, s.fh * v.videoHeight, 0, 0, W, H);
+  var d = ctx.getImageData(0, 0, W, H).data, g = new Uint8Array(W * H);
+  for(var i = 0, j = 0; i < d.length; i += 4, j++) g[j] = (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11) | 0;
+  return g;
+}
+function sigDiff(a, b){
+  var n = 0;
+  for(var i = 0; i < a.length; i++) if(Math.abs(a[i] - b[i]) > 16) n++;
+  return n / a.length;
+}
+function tick(){
+  if(SC.mode !== 'live' || !FL || SC.paused || !$('liveAuto').checked) return;
+  var v = $('liveVideo');
+  if(!v.videoWidth) return;
+  var sig = regionSig(), now = Date.now();
+  if(SC.prevSig && sigDiff(SC.prevSig, sig) > SENS[$('liveSens').value]){
+    if(!SC.pending) SC.firstChangeAt = now;
+    SC.pending = true; SC.changedAt = now;
+    setFloatStatus('偵測到畫面變化…');
+  }
+  SC.prevSig = sig;
+  /* translate once the region has been still for 1.2 s (or after 6 s of constant change), at most every 2.5 s */
+  if(SC.pending && !SC.busy && (now - SC.changedAt >= 1200 || now - SC.firstChangeAt >= 6000) && now - SC.lastRun >= 2500){
+    SC.pending = false;
+    runTranslate('auto');
+  }
+}
+function startLoop(){
+  stopLoop();
+  SC.prevSig = null; SC.pending = false; SC.paused = false; SC.lastRun = 0;
+  try{   /* a worker timer keeps ticking even when this tab is in the background */
+    var blob = new Blob(['setInterval(function(){postMessage(1)},1000)'], {type: 'text/javascript'});
+    SC.worker = new Worker(URL.createObjectURL(blob));
+    SC.worker.onmessage = tick;
+  }catch(e){
+    SC.worker = null;
+    SC.timer = setInterval(tick, 1000);
+  }
+  runTranslate('first');
+}
+function stopLoop(){
+  if(SC.worker){ try{ SC.worker.terminate(); }catch(e){} SC.worker = null; }
+  if(SC.timer){ clearInterval(SC.timer); SC.timer = null; }
+}
+async function runTranslate(reason){
+  if(SC.mode !== 'live' || !FL) return;
+  if(SC.busy){ SC.pending = true; return; }
+  SC.busy = true;
+  setFloatStatus('翻譯中…');
+  try{
+    var prepared = await canvasToPrepared(cropToCanvas(), 1600);
+    var lines = await aiTranslateImage(prepared, srcSel.value, tgtSel.value);
+    SC.lines = lines; SC.lastRun = Date.now();
+    renderFloat();
+    renderPairs($('resScreen'), lines, true);
+    $('btnDlScreen').disabled = !lines.length;
+    setFloatStatus('已更新 ' + new Date().toLocaleTimeString());
+    SC.prevSig = regionSig();
+  }catch(e){
+    SC.lastRun = Date.now() + 8000;                       /* back off after an error */
+    var m = errMsg(e);
+    if(/狀態碼 (401|403|404)/.test(m)){ SC.paused = true; m += '（已自動暫停，請檢查設定）'; }
+    setFloatStatus('翻譯失敗：' + m);
+  }finally{
+    SC.busy = false;
+  }
+}
+
+/* ---- floating window (Document Picture-in-Picture, popup fallback) ---- */
+function mk(d, tag, cls, text){
+  var e = d.createElement(tag);
+  if(cls) e.className = cls;
+  if(text != null) e.textContent = text;
+  return e;
+}
+function copyStyles(d){
+  Array.prototype.forEach.call(document.styleSheets, function(ss){
+    try{
+      var css = Array.prototype.map.call(ss.cssRules, function(r){ return r.cssText; }).join('\n');
+      var st = d.createElement('style'); st.textContent = css; d.head.appendChild(st);
+    }catch(e){
+      if(ss.href){ var l = d.createElement('link'); l.rel = 'stylesheet'; l.href = ss.href; d.head.appendChild(l); }
+    }
+  });
+}
+function syncTheme(){
+  if(!FL || !FL.win) return;
+  try{
+    var t = document.documentElement.getAttribute('data-theme'), r = FL.win.document.documentElement;
+    if(t) r.setAttribute('data-theme', t); else r.removeAttribute('data-theme');
+  }catch(e){}
+}
+new MutationObserver(syncTheme).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+
+function setFloatStatus(t){
+  if(FL && FL.refs && FL.refs.status){ try{ FL.refs.status.textContent = t; }catch(e){} }
+}
+function buildFloatUI(win){
+  var d = win.document;
+  d.title = '即時翻譯';
+  copyStyles(d); syncTheme();
+  d.body.textContent = '';
+  var wrap = mk(d, 'div', 'fl-wrap');
+  var bar = mk(d, 'div', 'fl-bar');
+  var status = mk(d, 'span', 'fl-status', '準備中…');
+  bar.appendChild(mk(d, 'span', 'fl-dot'));
+  bar.appendChild(mk(d, 'b', null, '即時翻譯'));
+  bar.appendChild(status);
+  var tools = mk(d, 'div', 'fl-tools');
+  function addBtn(label, title, fn){
+    var b = mk(d, 'button', 'fl-btn', label); b.title = title; b.addEventListener('click', fn); tools.appendChild(b); return b;
+  }
+  var bPause = addBtn('⏸', '暫停／繼續自動翻譯', function(){
+    SC.paused = !SC.paused; bPause.textContent = SC.paused ? '▶' : '⏸';
+    setFloatStatus(SC.paused ? '已暫停' : '偵測中…');
+  });
+  addBtn('🔄', '立即重新翻譯', function(){ runTranslate('manual'); });
+  addBtn('A−', '縮小字級', function(){ FL.fontPx = Math.max(11, FL.fontPx - 2); renderFloat(); });
+  addBtn('A+', '放大字級', function(){ FL.fontPx = Math.min(40, FL.fontPx + 2); renderFloat(); });
+  addBtn('原文', '顯示／隱藏原文', function(){ FL.showOrig = !FL.showOrig; renderFloat(); });
+  addBtn('📋', '複製譯文', async function(){
+    var txt = (SC.lines || []).map(function(L){ return joinSents(L.pairs.map(function(p){ return p.t; }), tgtSel.value); }).join('\n');
+    var ok = false;
+    try{ await win.navigator.clipboard.writeText(txt); ok = true; }catch(e){ ok = await copyText(txt); }
+    setFloatStatus(ok ? '已複製譯文' : '複製失敗');
+  });
+  var list = mk(d, 'div', 'fl-list');
+  wrap.appendChild(bar); wrap.appendChild(tools); wrap.appendChild(list);
+  d.body.appendChild(wrap);
+  FL.refs = {status: status, list: list};
+  renderFloat();
+}
+function renderFloat(){
+  if(!FL || !FL.win || !FL.refs) return;
+  try{
+    var d = FL.win.document, list = FL.refs.list, any = false;
+    list.textContent = '';
+    list.style.fontSize = FL.fontPx + 'px';
+    (SC.lines || []).forEach(function(L){
+      (L.pairs || []).forEach(function(p){
+        any = true;
+        var row = mk(d, 'div', 'fl-row');
+        if(FL.showOrig) row.appendChild(mk(d, 'div', 'fl-o', p.o));
+        row.appendChild(mk(d, 'div', 'fl-t', p.t));
+        list.appendChild(row);
+      });
+    });
+    if(!any) list.appendChild(mk(d, 'div', 'fl-empty', '（尚未偵測到文字）'));
+  }catch(e){}
+}
+async function openFloat(){
+  if(FL){ closeFloat(); return; }
+  if(SC.mode !== 'live'){ toast('請先按「開始擷取畫面」並框選區域', true); return; }
+  if(IN_CLAUDE){ toast('懸浮即時翻譯需使用下載的獨立版。', true); return; }
+  if(!aiImagesAvailable()){ imagesNotAvailable(); return; }
+  var win = null, kind = 'inline';
+  if('documentPictureInPicture' in window){
+    try{ win = await window.documentPictureInPicture.requestWindow({width: 440, height: 560}); kind = 'pip'; }
+    catch(e){ win = null; }
+  }
+  if(!win){
+    try{
+      win = window.open('', 'aiTranslatorFloat', 'popup=yes,width=440,height=560');
+      if(win){
+        kind = 'popup';
+        win.document.open();
+        win.document.write('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>即時翻譯</title></head><body></body></html>');
+        win.document.close();
+      }
+    }catch(e){ win = null; }
+  }
+  FL = {win: win, kind: win ? kind : 'inline', fontPx: 17, showOrig: $('liveShowOrig').checked, refs: null};
+  if(win){
+    buildFloatUI(win);
+    win.addEventListener('pagehide', function(){ if(FL && FL.win === win) closeFloat(true); });
+    toast(kind === 'pip'
+      ? '懸浮視窗已開啟，會保持在其他軟體上方。請把它拖到不會遮住所選區域的位置。'
+      : '已開啟獨立小視窗（不一定會置頂；Windows 可用 PowerToys「Always on Top」，快捷鍵 Win+Ctrl+T）。');
+  } else {
+    toast('無法開啟懸浮視窗（可能被瀏覽器封鎖彈出視窗），改在頁面下方顯示即時結果。', true);
+  }
+  $('btnFloat').textContent = '❌ 關閉即時翻譯';
+  startLoop();
+}
+function closeFloat(silent){
+  stopLoop();
+  var f = FL; FL = null;
+  if(f && f.win){ try{ f.win.close(); }catch(e){} }
+  var b = $('btnFloat');
+  if(b) b.textContent = '🪟 開啟懸浮即時翻譯';
+}
+$('btnFloat').addEventListener('click', openFloat);
+
+
+/* ===== v1.3：更多翻譯引擎 + 即時字幕 ===== */
+/* ============================================================
+   其他翻譯引擎：Gemini（免費金鑰）、OpenAI 相容（Groq／OpenRouter／Ollama…）、DeepL、
+   Chrome 內建離線 AI、手機離線翻譯（ML Kit）。所有翻譯功能（文字／Excel／Word／PDF／郵件／圖片／螢幕）共用。
+   ============================================================ */
+(function(){
+var APP = !!(window.AIT && typeof window.AIT.version === 'function');
+var HAS_MT = APP && typeof window.AIT.mtTranslate === 'function';
+var KEY = 'ait.eng2';
+var DEF = {gemKey: '', gemModel: 'gemini-2.5-flash', oaiPreset: 'groq', oaiBase: 'https://api.groq.com/openai/v1', oaiKey: '', oaiModel: 'openai/gpt-oss-120b', oaiVision: false, deeplKey: ''};
+var C = Object.assign({}, DEF);
+var RETIRED = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
+try{ var j0 = JSON.parse(localStorage.getItem(KEY) || '{}'); Object.keys(DEF).forEach(function(k){ if(j0[k] !== undefined) C[k] = j0[k]; }); }catch(e){}
+if(/groq\.com/i.test(C.oaiBase) && RETIRED.indexOf(C.oaiModel) >= 0) C.oaiModel = DEF.oaiModel;
+function persist(){
+  try{
+    var o = Object.assign({}, C);
+    if(!APP && !(window.CFG && CFG.remember)){ o.gemKey = ''; o.oaiKey = ''; o.deeplKey = ''; }
+    localStorage.setItem(KEY, JSON.stringify(o));
+  }catch(e){}
+}
+var LABEL = {
+  gemini: 'Gemini（免費金鑰・品質高）',
+  openai: 'OpenAI 相容（Groq／OpenRouter／Ollama）',
+  deepl: 'DeepL（免費金鑰・僅 APK）',
+  chrome: 'Chrome 內建離線 AI 翻譯',
+  mlkit: '手機離線翻譯（免費・免網路・僅 APK）'
+};
+var IDS = ['gemini', 'openai', 'deepl', 'chrome', 'mlkit'];
+function isLocal(u){ return /^https?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(u || ''); }
+function avail(e){
+  if(e === 'deepl') return APP;
+  if(e === 'mlkit') return HAS_MT;
+  if(e === 'chrome') return !APP && ('Translator' in self);
+  return true;
+}
+function ready(e){
+  if(e === 'gemini') return !!C.gemKey;
+  if(e === 'openai') return !!(C.oaiBase && C.oaiModel && (C.oaiKey || isLocal(C.oaiBase)));
+  if(e === 'deepl') return APP && !!C.deeplKey;
+  if(e === 'chrome') return ('Translator' in self);
+  if(e === 'mlkit') return HAS_MT;
+  return false;
+}
+var eng = function(){ return engineSel.value; };
+var isX = function(e){ return IDS.indexOf(e) >= 0; };
+
+/* ---------- 引擎下拉選單 ---------- */
+function addOptions(sel, ids, extra){
+  ids.forEach(function(id){
+    if(!avail(id) || Array.prototype.some.call(sel.options, function(o){ return o.value === id; })) return;
+    var o = document.createElement('option'); o.value = id; o.textContent = LABEL[id]; sel.appendChild(o);
+  });
+  (extra || []).forEach(function(x){
+    if(Array.prototype.some.call(sel.options, function(o){ return o.value === x[0]; })) return;
+    var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; sel.appendChild(o);
+  });
+}
+addOptions(engineSel, IDS);
+try{
+  var se = localStorage.getItem('ait.engine'); try{ se = JSON.parse(se); }catch(e){}
+  if(se && Array.prototype.some.call(engineSel.options, function(o){ return o.value === se && !o.hidden && o.value !== 'sub'; })) engineSel.value = se;
+}catch(e){}
+engineSel.addEventListener('change', function(){ try{ localStorage.setItem('ait.engine', JSON.stringify(engineSel.value)); }catch(e){} });
+
+/* ---------- LLM 呼叫（回傳解析好的 JSON） ---------- */
+async function httpJson(url, opt){
+  var r = await fetch(url, opt), t = await r.text();
+  if(!r.ok){ var e = new Error('HTTP ' + r.status + ' ' + t.slice(0, 240)); e.status = r.status; throw e; }
+  return JSON.parse(t);
+}
+async function geminiJson(prompt, imgs){
+  if(!C.gemKey) throw new Error('尚未設定 Gemini API 金鑰');
+  var parts = [];
+  (imgs || []).forEach(function(x){ parts.push({inline_data: {mime_type: x.mime, data: x.b64}}); });
+  parts.push({text: prompt});
+  var j;
+  try{
+    j = await httpJson('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(C.gemModel) + ':generateContent?key=' + encodeURIComponent(C.gemKey), {
+      method: 'POST', headers: {'content-type': 'application/json'},
+      body: JSON.stringify({contents: [{role: 'user', parts: parts}], generationConfig: {temperature: 0.2, responseMimeType: 'application/json'}})
+    });
+  }catch(e){
+    if(e.status === 429) throw new Error('Gemini 免費額度或速率已達上限（狀態碼 429），稍後再試，或把模型改成 flash-lite');
+    if(e.status === 400 && /API key/i.test(e.message)) throw new Error('Gemini 金鑰無效（狀態碼 400）');
+    if(e.status === 403) throw new Error('Gemini 金鑰沒有權限或所在地區不支援（狀態碼 403）');
+    throw e;
+  }
+  var c = j.candidates && j.candidates[0];
+  if(!c || !c.content || !c.content.parts) throw new Error('Gemini 沒有回應內容（可能被安全過濾）');
+  return parseJsonLoose(c.content.parts.map(function(p){ return p.text || ''; }).join(''));
+}
+async function openaiJson(prompt, imgs){
+  var base = (C.oaiBase || '').replace(/\/+$/, '');
+  if(!base) throw new Error('尚未設定 OpenAI 相容 API 網址');
+  var content = prompt;
+  if(imgs && imgs.length) content = [{type: 'text', text: prompt}].concat(imgs.map(function(x){ return {type: 'image_url', image_url: {url: 'data:' + x.mime + ';base64,' + x.b64}}; }));
+  var h = {'content-type': 'application/json'}; if(C.oaiKey) h.authorization = 'Bearer ' + C.oaiKey;
+  var j;
+  try{ j = await httpJson(base + '/chat/completions', {method: 'POST', headers: h, body: JSON.stringify({model: C.oaiModel, temperature: 0.2, messages: [{role: 'user', content: content}]})}); }
+  catch(e){
+    if(e.status === 401) throw new Error('金鑰無效（狀態碼 401）');
+    if(e.status === 429) throw new Error('已達用量或速率限制（狀態碼 429），稍後再試');
+    if(e.status === 404) throw new Error('找不到模型或網址不對（狀態碼 404），請檢查「模型」與「網址」');
+    throw e;
+  }
+  var m = j.choices && j.choices[0] && j.choices[0].message;
+  if(!m) throw new Error('模型沒有回應內容');
+  return parseJsonLoose(typeof m.content === 'string' ? m.content : (m.content || []).map(function(p){ return p.text || ''; }).join(''));
+}
+
+/* ---------- DeepL／離線：一次翻一批（回傳字串陣列） ---------- */
+function deeplCode(c, target){
+  if(!c || c === 'auto') return null;
+  var l = c.toLowerCase();
+  if(l === 'zh-tw' || l === 'zh-hant') return target ? 'ZH-HANT' : 'ZH';
+  if(l.indexOf('zh') === 0) return target ? 'ZH-HANS' : 'ZH';
+  var b = l.split('-')[0].toUpperCase();
+  if(target && b === 'EN') return 'EN-US';
+  if(target && b === 'PT') return 'PT-BR';
+  return b;
+}
+async function deeplRun(texts, sl, tl){
+  var host = /:fx$/.test(C.deeplKey) ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
+  var body = {text: texts, target_lang: deeplCode(tl, true)}; var s = deeplCode(sl, false); if(s) body.source_lang = s;
+  var j;
+  try{ j = await httpJson(host + '/v2/translate', {method: 'POST', headers: {'content-type': 'application/json', authorization: 'DeepL-Auth-Key ' + C.deeplKey}, body: JSON.stringify(body)}); }
+  catch(e){
+    if(e.status === 403) throw new Error('DeepL 金鑰無效（狀態碼 403）');
+    if(e.status === 456) throw new Error('DeepL 本月免費額度已用完（狀態碼 456）');
+    throw e;
+  }
+  return j.translations.map(function(t){ return t.text; });
+}
+var mtWait = {};
+function mtRun(texts, sl, tl){
+  return new Promise(function(res, rej){
+    var id = 'm' + Date.now() + Math.random().toString(36).slice(2, 6);
+    mtWait[id] = {res: res, rej: rej};
+    window.AIT.mtTranslate(id, JSON.stringify({src: sl, tgt: tl, texts: texts}));
+    setTimeout(function(){ if(mtWait[id]){ delete mtWait[id]; rej(new Error('離線翻譯逾時（第一次使用要下載語言包，請確認網路後重試）')); } }, 20 * 60e3);
+  });
+}
+function onMt(d){
+  d = typeof d === 'string' ? JSON.parse(d) : d;
+  var w = mtWait[d.id]; if(!w) return; delete mtWait[d.id];
+  if(d.ok) w.res(d.out || []); else w.rej(new Error(d.err || '離線翻譯失敗'));
+}
+var chromeCache = {};
+function chromeLang(c){ if(!c) return c; var l = c.toLowerCase(); if(l === 'zh-tw' || l === 'zh-hant') return 'zh-Hant'; if(l.indexOf('zh') === 0) return 'zh'; return l.split('-')[0]; }
+async function chromeRun(texts, sl, tl){
+  var s = sl;
+  if(!s || s === 'auto'){
+    if(!('LanguageDetector' in self)) throw new Error('Chrome 的離線翻譯需要手動選擇原文語言（這個瀏覽器沒有語言偵測）');
+    var det = await LanguageDetector.create(), r = await det.detect(texts.join(' ').slice(0, 600));
+    s = r && r[0] && r[0].detectedLanguage; if(!s || s === 'und') throw new Error('無法判斷原文語言，請手動選擇');
+  }
+  var o = {sourceLanguage: chromeLang(s), targetLanguage: chromeLang(tl)};
+  if(o.sourceLanguage === o.targetLanguage) return texts.slice();
+  var k = o.sourceLanguage + '>' + o.targetLanguage, t = chromeCache[k];
+  if(!t){
+    var av = await Translator.availability(o);
+    if(av === 'unavailable') throw new Error('Chrome 內建翻譯不支援這個語言組合（' + o.sourceLanguage + ' → ' + o.targetLanguage + '）');
+    if(av !== 'available') toast('正在下載 Chrome 離線翻譯語言包，第一次需要一點時間…');
+    t = await Translator.create(Object.assign({monitor: function(m){ m.addEventListener('downloadprogress', function(e){ if(e.total) toast('下載語言包 ' + Math.round(e.loaded / e.total * 100) + '%'); }); }}, o));
+    chromeCache[k] = t;
+  }
+  var out = [];
+  for(var i = 0; i < texts.length; i++) out.push(await t.translate(texts[i]));
+  return out;
+}
+async function plainBatch(e, texts, opts){
+  opts = opts || {};
+  var sl = opts.sourceLang || 'auto', tl = opts.targetLang;
+  var out = texts.slice(), need = [], map = new Map(), total = 0;
+  texts.forEach(function(t, i){
+    if(!needsTranslate(t)) return;
+    total++;
+    if(!map.has(t)){ map.set(t, []); need.push(t); }
+    map.get(t).push(i);
+  });
+  var failed = 0, lastErr = null, done = 0, CH = e === 'chrome' ? 10 : 40;
+  for(var p = 0; p < need.length; p += CH){
+    var chunk = need.slice(p, p + CH), res = null;
+    try{ res = e === 'deepl' ? await deeplRun(chunk, sl, tl) : e === 'mlkit' ? await mtRun(chunk, sl, tl) : await chromeRun(chunk, sl, tl); }
+    catch(err){ lastErr = err; }
+    chunk.forEach(function(t, k){
+      var r = res && res[k], ids = map.get(t);
+      if(typeof r === 'string' && r.length) ids.forEach(function(i){ out[i] = r; }); else failed += ids.length;
+      done += ids.length;
+    });
+    if(opts.onProgress) opts.onProgress(Math.min(done, texts.length), texts.length);
+  }
+  aiTranslateBatch.lastFailed = failed; aiTranslateBatch.lastNeeded = total; aiTranslateBatch.lastError = lastErr;
+  return out;
+}
+
+/* ---------- 掛進共用翻譯流程 ---------- */
+var _aiAvailable = aiAvailable, _aiImagesAvailable = aiImagesAvailable, _callAIJson = callAIJson, _translateBatch = translateBatch,
+    _updateEnginePill = updateEnginePill, _engineNotReady = engineNotReady;
+aiAvailable = function(){ var e = eng(); return isX(e) ? ready(e) : _aiAvailable(); };
+aiImagesAvailable = function(){
+  var e = eng();
+  if(e === 'gemini') return !!C.gemKey;
+  if(e === 'openai') return ready('openai') && !!C.oaiVision;
+  if(e === 'deepl' || e === 'chrome' || e === 'mlkit') return false;
+  return _aiImagesAvailable();
+};
+callAIJson = async function(prompt, imgs){
+  var e = eng();
+  if(e === 'gemini') return geminiJson(prompt, imgs);
+  if(e === 'openai') return openaiJson(prompt, imgs);
+  return _callAIJson(prompt, imgs);
+};
+translateBatch = async function(texts, opts){
+  var e = eng();
+  if(e === 'deepl' || e === 'chrome' || e === 'mlkit'){
+    var r = await plainBatch(e, texts, opts);
+    if(aiTranslateBatch.lastNeeded && aiTranslateBatch.lastFailed >= aiTranslateBatch.lastNeeded && aiTranslateBatch.lastError) throw aiTranslateBatch.lastError;
+    if(aiTranslateBatch.lastFailed) toast('有 ' + aiTranslateBatch.lastFailed + ' 句翻譯失敗，已保留原文，可再按一次重試。', true);
+    return r;
+  }
+  return _translateBatch(texts, opts);
+};
+engineNotReady = function(){
+  var e = eng();
+  if(!isX(e)) return _engineNotReady();
+  openSettings();
+  toast(e === 'gemini' ? '請先在「設定」填入 Gemini 金鑰（免費申請）。' : e === 'openai' ? '請先在「設定」填好 OpenAI 相容 API 的網址、模型與金鑰。' : e === 'deepl' ? '請先在「設定」填入 DeepL 金鑰。' : '這個引擎目前不可用。', true);
+};
+updateEnginePill = function(){
+  _updateEnginePill();
+  var e = eng(); if(!isX(e)) return;
+  var ok = ready(e), name = LABEL[e].replace(/（.*$/, '');
+  var txt = ok ? name + ' 已就緒' : (e === 'chrome' ? '此瀏覽器不支援' : '尚未設定金鑰');
+  if(e === 'gemini' && ok) txt = 'Gemini 已就緒（' + C.gemModel.replace('gemini-', '') + '）';
+  if(e === 'openai' && ok) txt = 'OpenAI 相容 已就緒（' + C.oaiModel.split('/').pop() + '）';
+  enginePill.textContent = txt; enginePill.className = 'status-pill ' + (ok ? 'ok' : 'bad');
+};
+engineSel.addEventListener('change', function(){ updateEnginePill(); });
+
+/* ---------- 設定畫面 ---------- */
+var PRESETS = {
+  groq: {base: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-120b'},
+  openrouter: {base: 'https://openrouter.ai/api/v1', model: 'meta-llama/llama-3.3-70b-instruct:free'},
+  ollama: {base: 'http://localhost:11434/v1', model: 'qwen2.5:7b'}
+};
+function el(html){ var d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+function link(u, t){ return '<a class="ext" href="' + u + '" target="_blank" rel="noopener noreferrer">' + t + '</a>'; }
+var UI = el(
+ '<div class="x2box" id="x2box">' +
+ '<h3 class="x2h">🧠 更多翻譯引擎（全部翻譯功能都能選）</h3>' +
+ '<p class="help">到「翻譯引擎」下拉選單選用。金鑰只存在這台裝置，只會直接送到各家服務。</p>' +
+ '<div class="field"><label class="lbl">Gemini API 金鑰（Google AI Studio，免費）</label>' +
+ '<input type="password" id="x2gemKey" placeholder="AIza..." autocomplete="off">' +
+ '<select id="x2gemModel"><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（最快、免費額度最多）</option><option value="gemini-2.5-flash">gemini-2.5-flash（建議，品質與速度平衡）</option><option value="gemini-2.5-pro">gemini-2.5-pro（最準、免費額度很少）</option></select>' +
+ '<div class="help">免費申請：' + link('https://aistudio.google.com/apikey', 'aistudio.google.com/apikey') + '（Google 帳號登入 → Create API key，免綁信用卡）。免費層有每分鐘／每天次數上限。可翻譯文字，也能看圖片；即時字幕還能直接聽音檔。</div>' +
+ '<div class="btn-row"><button class="secondary" id="x2testGem">測試 Gemini</button></div></div>' +
+
+ '<div class="field"><label class="lbl">OpenAI 相容 API（Groq、OpenRouter 免費模型、Ollama 本機、其他）</label>' +
+ '<select id="x2oaiPreset"><option value="groq">Groq（免費額度、速度很快）</option><option value="openrouter">OpenRouter（有多個免費模型）</option><option value="ollama">Ollama（自己電腦／伺服器跑的模型）</option><option value="custom">自訂</option></select>' +
+ '<input type="text" id="x2oaiBase" placeholder="API 網址，例如 https://api.groq.com/openai/v1" autocomplete="off">' +
+ '<input type="password" id="x2oaiKey" placeholder="API 金鑰（Ollama 可留空）" autocomplete="off">' +
+ '<input type="text" id="x2oaiModel" placeholder="模型名稱" autocomplete="off" list="x2models"><datalist id="x2models"></datalist>' +
+ '<label class="chk-line"><input type="checkbox" id="x2oaiVision"> 這個模型支援看圖（圖片／螢幕翻譯用）</label>' +
+ '<div class="help">免費金鑰：' + link('https://console.groq.com/keys', 'Groq') + '、' + link('https://openrouter.ai/keys', 'OpenRouter') + '（模型名稱結尾是 :free 的免費）。Ollama 請填電腦的網址（例如 http://192.168.1.10:11434/v1），電腦要允許區域網路連線。</div>' +
+ '<div class="btn-row"><button class="secondary" id="x2listOai">取得可用模型清單</button><button class="secondary" id="x2testOai">測試這個 API</button></div><div class="help" id="x2listOut"></div></div>' +
+
+ '<div class="field" id="x2deeplRow"><label class="lbl">DeepL API 金鑰（免費版每月 50 萬字，僅 APK 版可用）</label>' +
+ '<input type="password" id="x2deeplKey" placeholder="xxxxxxxx-xxxx-...:fx" autocomplete="off">' +
+ '<div class="help">免費申請：' + link('https://www.deepl.com/pro-api', 'deepl.com/pro-api') + '（選 DeepL API Free，需要註冊並驗證；金鑰結尾是 :fx）。網頁版受瀏覽器限制無法直接呼叫 DeepL。</div></div>' +
+
+ '<div class="field" id="x2offRow"><label class="lbl">離線翻譯</label>' +
+ '<div class="help" id="x2offHelp"></div>' +
+ '<div class="btn-row" id="x2preRow"><button class="secondary" id="x2prefetch">預先下載目前「原文→目標」語言包</button></div></div>' +
+ '</div>');
+function $x(id){ return UI.querySelector('#' + id); }
+function mount(){
+  var host = document.getElementById('cardClaude');
+  if(host){ var card = document.createElement('div'); card.className = 'card glass'; card.appendChild(UI); host.parentNode.insertBefore(card, host.nextSibling); return; }
+  var box = document.querySelector('#setModal .modal-box'), row = box && box.querySelector('.btn-row:last-of-type');
+  if(box && row) box.insertBefore(UI, row);
+}
+mount();
+UI.querySelectorAll('select,input[type=text],input[type=password]').forEach(function(x){ x.style.marginTop = '6px'; });
+function fill(){
+  $x('x2gemKey').value = C.gemKey; $x('x2gemModel').value = C.gemModel; $x('x2oaiPreset').value = C.oaiPreset; $x('x2oaiBase').value = C.oaiBase;
+  $x('x2oaiKey').value = C.oaiKey; $x('x2oaiModel').value = C.oaiModel; $x('x2oaiVision').checked = !!C.oaiVision; $x('x2deeplKey').value = C.deeplKey;
+  $x('x2deeplRow').style.display = APP ? '' : 'none';
+  $x('x2preRow').style.display = HAS_MT ? '' : 'none';
+  $x('x2offHelp').innerHTML = APP ? '「手機離線翻譯」用 Google ML Kit：免費、不用網路、不用金鑰，每個語言第一次使用時下載約 30 MB 語言包（非英文語言之間會經由英文轉譯，要多下載英文包）。品質比 AI 翻譯樸素，但速度快、隱私好。原文語言請手動選擇可省去偵測。'
+    : ('Chrome 內建離線 AI 翻譯：Chrome 138 以上的桌面版支援，語言包下載一次後完全離線、免費。' + ('Translator' in self ? '這個瀏覽器可以使用。' : '這個瀏覽器目前不支援。'));
+}
+fill();
+function save(){
+  C.gemKey = $x('x2gemKey').value.trim(); C.gemModel = $x('x2gemModel').value; C.oaiPreset = $x('x2oaiPreset').value; C.oaiBase = $x('x2oaiBase').value.trim();
+  C.oaiKey = $x('x2oaiKey').value.trim(); C.oaiModel = $x('x2oaiModel').value.trim(); C.oaiVision = $x('x2oaiVision').checked; C.deeplKey = $x('x2deeplKey').value.trim();
+  persist(); updateEnginePill();
+}
+UI.addEventListener('input', save); UI.addEventListener('change', save);
+$x('x2oaiPreset').addEventListener('change', function(){
+  var p = PRESETS[this.value]; if(p){ $x('x2oaiBase').value = p.base; $x('x2oaiModel').value = p.model; save(); }
+});
+UI.addEventListener('click', function(ev){
+  var a = ev.target.closest && ev.target.closest('a.ext'); if(!a) return;
+  if(APP && window.AIT.openUrl){ ev.preventDefault(); window.AIT.openUrl(a.href); }
+});
+var btnSave = document.getElementById('btnSetSave'); if(btnSave) btnSave.addEventListener('click', persist);
+async function testEngine(kind){
+  var prev = engineSel.value; save();
+  try{
+    toast('測試中…');
+    var r = await (kind === 'gem' ? geminiJson : openaiJson)('Translate "Good morning" into Traditional Chinese. Reply only with a JSON array containing one string.', []);
+    toast('✓ 連線成功：' + (Array.isArray(r) ? r[0] : JSON.stringify(r)).toString().slice(0, 40));
+  }catch(e){ toast('測試失敗：' + (e.message || e), true); }
+  engineSel.value = prev;
+}
+$x('x2testGem').addEventListener('click', function(){ testEngine('gem'); });
+$x('x2testOai').addEventListener('click', function(){ testEngine('oai'); });
+$x('x2listOai').addEventListener('click', async function(){
+  var out = $x('x2listOut'); save();
+  var base = (C.oaiBase || '').replace(/\/+$/, '');
+  if(!base){ out.textContent = '請先填 API 網址'; return; }
+  out.textContent = '查詢中…';
+  try{
+    var h = C.oaiKey ? {authorization: 'Bearer ' + C.oaiKey} : {};
+    var j = await httpJson(base + '/models', {headers: h});
+    var ids = (j.data || []).map(function(m){ return m.id; }).filter(function(id){ return !/whisper|tts|orpheus|guard|embed|moderation/i.test(id); }).sort();
+    $x('x2models').innerHTML = ids.map(function(id){ return '<option value="' + id + '">'; }).join('');
+    out.textContent = '共 ' + ids.length + ' 個可用：' + ids.slice(0, 40).join('、') + '。點上面「模型名稱」欄位可從清單選。';
+  }catch(e){ out.textContent = '查詢失敗：' + (e.message || e) + '（金鑰或網址可能不對）'; }
+});
+$x('x2prefetch').addEventListener('click', async function(){
+  try{
+    var s = srcSel.value, t = tgtSel.value;
+    if(s === 'auto'){ toast('請先在「原文語言」選一個語言（離線翻譯下載語言包時無法自動偵測）', true); return; }
+    toast('下載語言包中…完成會提示');
+    await new Promise(function(res, rej){
+      var id = 'p' + Date.now(); mtWait[id] = {res: res, rej: rej};
+      window.AIT.mtTranslate(id, JSON.stringify({prefetch: true, src: s, tgt: t}));
+    });
+    toast('✓ 離線語言包已下載，之後不需要網路');
+  }catch(e){ toast('下載失敗：' + (e.message || e), true); }
+});
+window.ENX = {
+  cfg: function(){ return C; }, ids: IDS, labels: LABEL, avail: avail, ready: ready, addOptions: addOptions, onMt: onMt, fill: fill,
+  nativeCfg: function(){ return {gemKey: C.gemKey, gemModel: C.gemModel, oaiBase: C.oaiBase, oaiKey: C.oaiKey, oaiModel: C.oaiModel, deeplKey: C.deeplKey}; },
+  missingKey: function(e){
+    if(e === 'gemini' && !C.gemKey) return '請先到「設定」填入 Gemini 金鑰（免費申請）';
+    if(e === 'openai' && !ready('openai')) return '請先到「設定」填好 OpenAI 相容 API 的網址、模型與金鑰';
+    if(e === 'deepl' && !C.deeplKey) return '請先到「設定」填入 DeepL 金鑰';
+    return '';
+  }
+};
+updateEnginePill();
+})();
+
+/* ============================================================
+   電腦版／線上版「即時字幕」：瀏覽器語音辨識（Web Speech API）→（可選）翻譯 → 置頂小視窗或頁面內字幕。
+   可完全不翻譯，只顯示聽到的原文。字型／大小／顏色／背景／透明度都能自訂。
+   ============================================================ */
+(function(){
+if(window.AIT && typeof window.AIT.version === 'function') return;      /* APK 有原生版本 */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var KEY = 'ait.wcap';
+var DEF = {lang: 'auto', eng: 'none', where: 'pip', font: 'sans', size: 28, fg: '#ffffff', fg2: '#ffe066', bg: '#000000', op: 70, orig: true, track: false};
+var P = Object.assign({}, DEF);
+try{ Object.assign(P, JSON.parse(localStorage.getItem(KEY) || '{}')); }catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} }
+var FONTS = {
+  sans: ['系統預設黑體', '"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif'],
+  serif: ['明體／襯線', '"Noto Serif TC","PMingLiU","Songti TC",serif'],
+  kai: ['楷體', '"BiauKai","DFKai-SB","Kaiti TC","KaiTi",serif'],
+  round: ['圓體', '"Yuanti TC","Microsoft JhengHei UI","Arial Rounded MT Bold",sans-serif'],
+  mono: ['等寬', 'ui-monospace,Consolas,Menlo,monospace']
+};
+var $ = function(id){ return document.getElementById(id); };
+var running = false, rec = null, win = null, root = null, lines = [], interim = '', stream = null, seq = 0;
+
+/* ---------- UI ---------- */
+var css = document.createElement('style');
+css.textContent = '#wcBtn{position:fixed;right:16px;bottom:16px;z-index:900;box-shadow:var(--shadow);border-radius:999px;padding:10px 16px;}' +
+ '#wcPanel .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}#wcPanel input[type=range]{width:100%;}#wcPanel input[type=color]{width:100%;height:34px;padding:2px;border:1px solid var(--border-soft);border-radius:var(--radius-sm);background:var(--surface-3);}' +
+ '#wcInline{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:950;width:min(92vw,900px);display:none;border-radius:12px;padding:10px 16px;text-align:center;cursor:move;}';
+document.head.appendChild(css);
+
+var btn = document.createElement('button');
+btn.id = 'wcBtn'; btn.className = 'primary'; btn.textContent = '🎙 即時字幕';
+document.body.appendChild(btn);
+
+var mask = document.createElement('div');
+mask.className = 'modal-mask'; mask.id = 'wcPanel';
+var fontOpts = Object.keys(FONTS).map(function(k){ return '<option value="' + k + '">' + FONTS[k][0] + '</option>'; }).join('');
+mask.innerHTML = '<div class="modal-box wide"><h3>🎙 即時字幕（聽到什麼就顯示什麼）</h3>' +
+ '<div id="wcUnsup" class="note err" style="display:none;"></div>' +
+ '<div class="row2"><div class="field"><label class="lbl">說話的語言</label><select id="wcLang"></select></div>' +
+ '<div class="field"><label class="lbl">翻譯方式</label><select id="wcEng"></select></div></div>' +
+ '<div class="field"><label class="lbl">字幕顯示在</label><select id="wcWhere"><option value="pip">置頂小視窗（可蓋在其他軟體上方，Chrome／Edge）</option><option value="page">本頁面底部（可拖曳）</option></select></div>' +
+ '<div class="row2"><div class="field"><label class="lbl">字型</label><select id="wcFont">' + fontOpts + '</select></div>' +
+ '<div class="field"><label class="lbl">字體大小：<span id="wcSizeV"></span> px</label><input type="range" id="wcSize" min="14" max="72" step="1"></div></div>' +
+ '<div class="row2" style="grid-template-columns:repeat(3,1fr);"><div class="field"><label class="lbl">原文顏色</label><input type="color" id="wcFg"></div>' +
+ '<div class="field"><label class="lbl">譯文顏色</label><input type="color" id="wcFg2"></div>' +
+ '<div class="field"><label class="lbl">背景顏色</label><input type="color" id="wcBg"></div></div>' +
+ '<div class="field"><label class="lbl">背景不透明度：<span id="wcOpV"></span>%</label><input type="range" id="wcOp" min="0" max="100" step="5"></div>' +
+ '<label class="chk-line"><input type="checkbox" id="wcOrig"> 翻譯時同時顯示原文</label>' +
+ '<label class="chk-line"><input type="checkbox" id="wcTrack"> 嘗試辨識「分享的分頁／系統聲音」（需新版 Chrome；不支援會自動改用麥克風）</label>' +
+ '<div class="field"><div id="wcPrev" style="border-radius:10px;padding:10px 14px;text-align:center;margin-top:6px;">字幕預覽 Subtitle preview</div></div>' +
+ '<div class="note">原理：瀏覽器內建語音辨識，預設聽「麥克風」。要翻譯影片／音檔，請用喇叭播放讓麥克風收得到（或勾選上面的分頁聲音選項）；視訊通話建議開喇叭。辨識由瀏覽器供應商（Chrome 為 Google）處理語音。選「不翻譯」就只顯示辨識出的原文。</div>' +
+ '<div class="btn-row"><button class="primary" id="wcGo">開始字幕</button><button class="secondary" id="wcClose">關閉視窗</button></div></div>';
+document.body.appendChild(mask);
+
+var inl = document.createElement('div');
+inl.id = 'wcInline'; document.body.appendChild(inl);
+
+function fill(){
+  var ls = $('wcLang'); ls.innerHTML = '';
+  var auto = document.createElement('option'); auto.value = 'auto'; auto.textContent = '跟隨瀏覽器語言（' + (navigator.language || 'zh-TW') + '）'; ls.appendChild(auto);
+  (window.LANGS || []).forEach(function(l){ if(l.code === 'auto') return; var o = document.createElement('option'); o.value = l.code; o.textContent = l.name; ls.appendChild(o); });
+  var es = $('wcEng'); es.innerHTML = '<option value="none">不翻譯（只顯示聽到的原文）</option>';
+  Array.prototype.forEach.call(engineSel.options, function(o){ if(o.hidden || o.value === 'sub') return; var n = document.createElement('option'); n.value = o.value; n.textContent = '翻譯：' + o.textContent; es.appendChild(n); });
+  $('wcLang').value = P.lang; $('wcEng').value = P.eng; $('wcWhere').value = P.where; $('wcFont').value = P.font;
+  if(!$('wcEng').value) $('wcEng').value = 'none';
+  $('wcSize').value = P.size; $('wcFg').value = P.fg; $('wcFg2').value = P.fg2; $('wcBg').value = P.bg; $('wcOp').value = P.op;
+  $('wcOrig').checked = P.orig; $('wcTrack').checked = P.track;
+  var pip = ('documentPictureInPicture' in window);
+  if(!pip){ $('wcWhere').value = 'page'; P.where = 'page'; $('wcWhere').options[0].disabled = true; }
+  var msg = '';
+  if(!SR) msg = '這個瀏覽器沒有語音辨識功能，請改用電腦版 Chrome 或 Edge。';
+  else if(window.claude && typeof window.claude.use === 'function') msg = 'Claude.ai 內嵌頁面無法使用麥克風，請下載獨立版 html 或使用線上版網址開啟。';
+  $('wcUnsup').style.display = msg ? '' : 'none'; $('wcUnsup').textContent = msg;
+  $('wcGo').disabled = !!msg;
+  preview();
+}
+function readUi(){
+  P.lang = $('wcLang').value; P.eng = $('wcEng').value; P.where = $('wcWhere').value; P.font = $('wcFont').value;
+  P.size = +$('wcSize').value; P.fg = $('wcFg').value; P.fg2 = $('wcFg2').value; P.bg = $('wcBg').value; P.op = +$('wcOp').value;
+  P.orig = $('wcOrig').checked; P.track = $('wcTrack').checked; save();
+}
+function rgba(hex, a){ var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function styleBox(el){
+  el.style.background = rgba(P.bg, P.op / 100); el.style.fontFamily = FONTS[P.font][1];
+  el.style.fontSize = P.size + 'px'; el.style.lineHeight = '1.35'; el.style.color = P.fg;
+}
+function preview(){
+  $('wcSizeV').textContent = P.size; $('wcOpV').textContent = P.op;
+  var p = $('wcPrev'); styleBox(p); p.style.fontSize = Math.min(P.size, 34) + 'px';
+  p.innerHTML = '<div style="color:' + P.fg + '">Hello, this is a subtitle.</div>' + (P.eng !== 'none' ? '<div style="color:' + P.fg2 + '">你好，這是字幕。</div>' : '');
+}
+['wcLang', 'wcEng', 'wcWhere', 'wcFont', 'wcSize', 'wcFg', 'wcFg2', 'wcBg', 'wcOp', 'wcOrig', 'wcTrack'].forEach(function(id){
+  $(id).addEventListener('input', function(){ readUi(); preview(); render(); });
+  $(id).addEventListener('change', function(){ readUi(); preview(); render(); });
+});
+fill();
+btn.addEventListener('click', function(){ if(running) return; fill(); mask.classList.add('show'); });
+$('wcClose').addEventListener('click', function(){ mask.classList.remove('show'); });
+$('wcGo').addEventListener('click', function(){ if(running) stop(); else start(); });
+
+/* ---------- 字幕畫面 ---------- */
+function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]; }); }
+function render(){
+  var tr = P.eng !== 'none';
+  var html = '';
+  var shown = lines.slice(-2);
+  shown.forEach(function(l){
+    if(tr){
+      if(P.orig) html += '<div style="color:' + P.fg + ';font-size:' + Math.round(P.size * 0.72) + 'px;opacity:.9">' + esc(l.o) + '</div>';
+      html += '<div style="color:' + P.fg2 + '">' + esc(l.t == null ? '…' : l.t) + '</div>';
+    } else html += '<div style="color:' + P.fg + '">' + esc(l.o) + '</div>';
+  });
+  if(interim) html += '<div style="color:' + P.fg + ';opacity:.6;' + (tr ? 'font-size:' + Math.round(P.size * 0.72) + 'px' : '') + '">' + esc(interim) + '</div>';
+  if(!html && running) html = '<div style="opacity:.5;font-size:' + Math.round(P.size * 0.6) + 'px;color:' + P.fg + '">（聆聽中…）</div>';
+  var el = root || inl;
+  if(!running){ inl.style.display = 'none'; return; }
+  styleBox(el); el.innerHTML = html;
+  if(el === inl) inl.style.display = 'block';
+  else inl.style.display = 'none';
+}
+async function openOut(){
+  root = null;
+  if(P.where === 'pip' && 'documentPictureInPicture' in window){
+    try{
+      win = await documentPictureInPicture.requestWindow({width: 620, height: 190});
+      win.document.body.style.cssText = 'margin:0;display:flex;align-items:flex-end;height:100vh;background:#111;';
+      root = win.document.createElement('div'); root.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 14px;text-align:center;';
+      win.document.body.appendChild(root);
+      win.addEventListener('pagehide', function(){ if(running) stop(true); });
+    }catch(e){ win = null; root = null; toast('無法開啟置頂視窗，改在頁面底部顯示。', true); }
+  }
+}
+(function drag(){
+  var sx, sy, ox, oy, on = false;
+  inl.addEventListener('pointerdown', function(e){ on = true; sx = e.clientX; sy = e.clientY; var r = inl.getBoundingClientRect(); ox = r.left; oy = r.top; inl.setPointerCapture(e.pointerId); });
+  inl.addEventListener('pointermove', function(e){ if(!on) return; inl.style.transform = 'none'; inl.style.left = (ox + e.clientX - sx) + 'px'; inl.style.top = (oy + e.clientY - sy) + 'px'; inl.style.bottom = 'auto'; });
+  inl.addEventListener('pointerup', function(){ on = false; });
+})();
+
+/* ---------- 辨識 ---------- */
+function recLang(){
+  if(P.lang === 'auto') return navigator.language || 'zh-TW';
+  var m = {'zh-TW': 'zh-TW', 'zh-CN': 'zh-CN', 'zh': 'zh-TW', 'en': 'en-US', 'ja': 'ja-JP', 'ko': 'ko-KR', 'es': 'es-ES', 'fr': 'fr-FR', 'de': 'de-DE', 'pt': 'pt-BR', 'ru': 'ru-RU', 'it': 'it-IT', 'th': 'th-TH', 'vi': 'vi-VN', 'id': 'id-ID', 'ar': 'ar-SA', 'hi': 'hi-IN'};
+  return m[P.lang] || P.lang;
+}
+async function translateLine(l){
+  var my = ++seq;
+  try{
+    var r = await translateBatch([l.o], {sourceLang: P.lang === 'auto' ? 'auto' : P.lang, targetLang: tgtSel.value});
+    l.t = (r && r[0]) || l.o;
+  }catch(e){ l.t = l.o; }
+  render();
+}
+function startRec(){
+  rec = new SR();
+  rec.continuous = true; rec.interimResults = true; rec.lang = recLang();
+  rec.onresult = function(ev){
+    var fin = '';
+    interim = '';
+    for(var i = ev.resultIndex; i < ev.results.length; i++){
+      var t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) fin += t; else interim += t;
+    }
+    if(fin.trim()){
+      var l = {o: fin.trim(), t: P.eng === 'none' ? undefined : null};
+      lines.push(l); if(lines.length > 6) lines.shift();
+      interim = '';
+      if(P.eng !== 'none') translateLine(l);
+    }
+    render();
+  };
+  rec.onerror = function(e){
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){ toast('麥克風權限被拒絕，請在網址列允許使用麥克風。', true); stop(true); }
+    else if(e.error === 'audio-capture'){ toast('找不到麥克風。', true); stop(true); }
+  };
+  rec.onend = function(){ if(running){ try{ rec.lang = recLang(); startOne(); }catch(e){ setTimeout(function(){ if(running) startOne(); }, 400); } } };
+  startOne();
+}
+function startOne(){
+  if(stream){
+    var tr = stream.getAudioTracks()[0];
+    try{ rec.start(tr); return; }catch(e){ stream = null; toast('此瀏覽器不能直接辨識分享的聲音，已改用麥克風（請用喇叭播放）。', true); }
+  }
+  rec.start();
+}
+async function start(){
+  readUi();
+  if(P.eng !== 'none'){
+    engineSel.value = P.eng; try{ engineSel.dispatchEvent(new Event('change')); }catch(e){}
+    if(window.ENX && ENX.missingKey && ENX.missingKey(P.eng)){ toast('這個翻譯引擎尚未設定金鑰，請先到「設定」填寫，或選「不翻譯」。', true); return; }
+  }
+  lines = []; interim = ''; running = true;
+  if(P.track){
+    try{ stream = await navigator.mediaDevices.getDisplayMedia({video: true, audio: true}); if(!stream.getAudioTracks().length){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; toast('沒有取得分享的聲音（分享時請勾選「同時分享分頁音訊」），改用麥克風。', true); } }
+    catch(e){ stream = null; }
+  }
+  await openOut();
+  mask.classList.remove('show');
+  $('wcGo').textContent = '停止字幕'; btn.textContent = '⏹ 停止字幕'; btn.classList.add('danger');
+  render();
+  try{ startRec(); }catch(e){ toast('無法啟動語音辨識：' + (e && e.message || e), true); stop(true); }
+}
+function stop(silent){
+  running = false;
+  try{ rec && (rec.onend = null, rec.stop()); }catch(e){}
+  rec = null;
+  if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+  if(win){ try{ win.close(); }catch(e){} win = null; }
+  root = null; inl.style.display = 'none';
+  $('wcGo').textContent = '開始字幕'; btn.textContent = '🎙 即時字幕'; btn.classList.remove('danger');
+}
+btn.addEventListener('click', function(){ if(running){ stop(); mask.classList.remove('show'); } });
+window.WCAP = {start: start, stop: stop, running: function(){ return running; }};
+})();
+
+</script>
+</body>
+</html>
