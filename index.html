@@ -4,7 +4,7 @@
 <script>/* 線上更新開機程式：手機上若已下載比 APK 內建更新的介面版本，就改用新版（存在 IndexedDB）。
    新版連續兩次沒有正常開啟 → 自動退回 APK 內建版本。網址加上 #builtin 也會強制使用內建版本。 */
 (function () {
-  var B = '1.4.0'; if (!window.__OTA) window.APP_BUILTIN = B;
+  var B = '1.5.0'; if (!window.__OTA) window.APP_BUILTIN = B;
   if (window.__OTA || location.hash.indexOf('builtin') >= 0) return;
   var v = null; try { v = JSON.parse(localStorage.getItem('ait.ota') || 'null'); } catch (e) {}
   function gt(a, b) { a = String(a).split('.').map(Number); b = String(b).split('.').map(Number); for (var i = 0; i < Math.max(a.length, b.length); i++) { var p = a[i] || 0, q = b[i] || 0; if (p !== q) return p > q; } return false; }
@@ -1144,6 +1144,38 @@ engineSel.addEventListener('change', updateEnginePill);
       }
     }catch(e){ sampleFn = null; }
     try{ downloadsFn = await window.claude.use('downloads'); }catch(e){ downloadsFn = null; }
+    /* APK 內建橋接：App 在背景開著這個頁面，把翻譯請求轉給這裡，用 Claude 月訂閱額度處理（只有 App 才有 window.AITE） */
+    try{
+      if(window.AITE && sampleFn){
+        try{ window.AITE.ready(true); }catch(e){}
+        var bridgeBusy = false;
+        setInterval(async function(){
+          if(bridgeBusy) return;
+          var j = ''; try{ j = window.AITE.poll(); }catch(e){ return; }
+          if(!j) return;
+          bridgeBusy = true;
+          var r = null; try{ r = JSON.parse(j); }catch(e){ bridgeBusy = false; return; }
+          try{
+            var o = {modelTier: 'default'};
+            if(r.images && r.images.length){
+              o.images = r.images.map(function(x){
+                var bin = atob(x.b64), u8 = new Uint8Array(bin.length);
+                for(var k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+                return new Blob([u8], {type: x.mime || 'image/png'});
+              });
+            }
+            var v = await sampleFn.json(r.prompt, o);
+            window.AITE.res(r.id, true, JSON.stringify(v));
+          }catch(e){
+            var m = (e && e.message) ? e.message : String(e);
+            if(e && e.code === 'not_granted') m = '尚未授權：請在 App 設定開啟「Claude 訂閱版翻譯」頁面，翻譯一次並按「允許」。';
+            else if(e && e.code === 'rate_limited') m = '已達 Claude 訂閱用量或速率限制，請稍後再試。';
+            window.AITE.res(r.id, false, m);
+          }
+          bridgeBusy = false;
+        }, 400);
+      } else if(window.AITE){ try{ window.AITE.ready(false); }catch(e){} }
+    }catch(e){}
   }
   updateEnginePill();
 })();
@@ -3074,10 +3106,62 @@ try{
 engineSel.addEventListener('change', function(){ try{ localStorage.setItem('ait.engine', JSON.stringify(engineSel.value)); }catch(e){} });
 
 /* ---------- LLM 呼叫（回傳解析好的 JSON） ---------- */
+/* ---------- Groq 用量：從回應標頭（若瀏覽器可讀）＋本機累計 ---------- */
+var GQ = {h: null, at: 0, req: 0, tok: 0, day: '', retry: 0};
+try{ var _g = JSON.parse(localStorage.getItem('ait.gq') || '{}'); if(_g.day === new Date().toISOString().slice(0, 10)) GQ = Object.assign(GQ, _g); }catch(e){}
+function gqSave(){ try{ GQ.day = new Date().toISOString().slice(0, 10); localStorage.setItem('ait.gq', JSON.stringify({h: GQ.h, at: GQ.at, req: GQ.req, tok: GQ.tok, day: GQ.day})); }catch(e){} }
+function isGroqUrl(u){ return /api\.groq\.com/i.test(u || ''); }
+function gqHeaders(r){
+  var g = function(k){ return r.headers.get(k); }, h = {};
+  ['limit-requests', 'remaining-requests', 'reset-requests', 'limit-tokens', 'remaining-tokens', 'reset-tokens'].forEach(function(k){ var v = g('x-ratelimit-' + k); if(v != null) h[k] = v; });
+  var ra = g('retry-after'); if(ra) h.retry = ra;
+  return Object.keys(h).length ? h : null;
+}
 async function httpJson(url, opt){
   var r = await fetch(url, opt), t = await r.text();
-  if(!r.ok){ var e = new Error('HTTP ' + r.status + ' ' + t.slice(0, 240)); e.status = r.status; throw e; }
+  if(isGroqUrl(url)){
+    var h = gqHeaders(r); if(h){ GQ.h = h; GQ.at = Date.now(); }
+    GQ.req++;
+    try{ var u = JSON.parse(t).usage; if(u && u.total_tokens) GQ.tok += u.total_tokens; }catch(e){}
+    gqSave(); gqRender();
+  }
+  if(!r.ok){
+    var e = new Error('HTTP ' + r.status + ' ' + t.slice(0, 240)); e.status = r.status;
+    if(r.status === 429 && isGroqUrl(url)){
+      var ra = r.headers.get('retry-after'); e.retryAfter = ra ? parseFloat(ra) : 0;
+      e.message = 'Groq 已達流量上限（429）' + (e.retryAfter ? '，請等約 ' + Math.ceil(e.retryAfter) + ' 秒再試' : '，請稍後再試') + '。每日額度用完要等隔天重置。';
+    }
+    throw e;
+  }
   return JSON.parse(t);
+}
+function gqRender(){
+  var box = document.getElementById('x2quota'), chip = document.getElementById('gqChip');
+  var h = GQ.h, lines = [];
+  if(h && h['limit-requests']){
+    var lr = +h['limit-requests'], rr = +h['remaining-requests'];
+    lines.push('今日請求：剩 <b>' + rr + '</b> / ' + lr + ' 次（重置：' + (h['reset-requests'] || '—') + '）');
+  }
+  if(h && h['limit-tokens']){
+    lines.push('每分鐘字數(tokens)：剩 <b>' + h['remaining-tokens'] + '</b> / ' + h['limit-tokens'] + '（重置：' + (h['reset-tokens'] || '—') + '）');
+  }
+  lines.push('本機累計（今天，此瀏覽器）：' + GQ.req + ' 次請求、約 ' + GQ.tok + ' tokens');
+  if(!h) lines.push('<span style="opacity:.75">尚未取得伺服器回報的剩餘額度（按下方「更新剩餘額度」；若瀏覽器不開放讀取標頭，只會顯示本機累計。Groq 免費版 gpt-oss 約為 每分鐘 30 次／8K tokens、每天 1,000 次／20 萬 tokens）</span>');
+  if(box) box.innerHTML = lines.join('<br>');
+  if(chip){
+    var show = engineSel.value === 'openai' && (C.oaiPreset === 'groq' || /groq/i.test(C.oaiBase || ''));
+    chip.style.display = show ? '' : 'none';
+    chip.textContent = 'Groq ' + (h && h['remaining-requests'] != null ? '剩 ' + h['remaining-requests'] + ' 次' : '今日 ' + GQ.req + ' 次');
+  }
+}
+async function gqRefresh(){
+  var base = (C.oaiBase || '').replace(/\/+$/, '');
+  if(!isGroqUrl(base) || !C.oaiKey){ toast('請先在上方填 Groq 網址與金鑰', true); return; }
+  try{
+    await httpJson(base + '/chat/completions', {method: 'POST', headers: {'content-type': 'application/json', authorization: 'Bearer ' + C.oaiKey}, body: JSON.stringify({model: C.oaiModel, max_tokens: 1, messages: [{role: 'user', content: 'hi'}]})});
+    if(!GQ.h) toast('已連線，但瀏覽器沒有開放讀取剩餘額度標頭，只顯示本機累計', true);
+  }catch(e){ toast('更新失敗：' + (e.message || e), true); }
+  gqRender();
 }
 async function geminiJson(prompt, imgs){
   if(!C.gemKey) throw new Error('尚未設定 Gemini API 金鑰');
@@ -3274,7 +3358,8 @@ var UI = el(
  '<input type="text" id="x2oaiModel" placeholder="模型名稱" autocomplete="off" list="x2models"><datalist id="x2models"></datalist>' +
  '<label class="chk-line"><input type="checkbox" id="x2oaiVision"> 這個模型支援看圖（圖片／螢幕翻譯用）</label>' +
  '<div class="help">免費金鑰：' + link('https://console.groq.com/keys', 'Groq') + '、' + link('https://openrouter.ai/keys', 'OpenRouter') + '（模型名稱結尾是 :free 的免費）。Ollama 請填電腦的網址（例如 http://192.168.1.10:11434/v1），電腦要允許區域網路連線。</div>' +
- '<div class="btn-row"><button class="secondary" id="x2listOai">取得可用模型清單</button><button class="secondary" id="x2testOai">測試這個 API</button></div><div class="help" id="x2listOut"></div></div>' +
+ '<div class="btn-row"><button class="secondary" id="x2listOai">取得可用模型清單</button><button class="secondary" id="x2testOai">測試這個 API</button></div><div class="help" id="x2listOut"></div>'+
+ '<div class="note" id="x2quotaWrap"><b>📊 Groq 用量</b><div id="x2quota" style="margin-top:4px;line-height:1.7"></div><div class="btn-row" style="margin-top:6px"><button class="secondary" id="x2quotaBtn">更新剩餘額度</button></div></div></div>' +
 
  '<div class="field" id="x2deeplRow"><label class="lbl">DeepL API 金鑰（免費版每月 50 萬字，僅 APK 版可用）</label>' +
  '<input type="password" id="x2deeplKey" placeholder="xxxxxxxx-xxxx-...:fx" autocomplete="off">' +
@@ -3327,6 +3412,14 @@ async function testEngine(kind){
 }
 $x('x2testGem').addEventListener('click', function(){ testEngine('gem'); });
 $x('x2testOai').addEventListener('click', function(){ testEngine('oai'); });
+$x('x2quotaBtn').addEventListener('click', gqRefresh);
+(function(){
+  var chip = document.createElement('span'); chip.id = 'gqChip'; chip.className = 'status-pill ok'; chip.style.cssText = 'display:none;margin-left:6px;cursor:pointer';
+  chip.title = '點一下查看／更新 Groq 剩餘額度'; var pill = document.getElementById('engineStatus');
+  if(pill && pill.parentNode) pill.parentNode.insertBefore(chip, pill.nextSibling);
+  chip.addEventListener('click', function(){ if(typeof openSettings === 'function') openSettings(); var b = document.getElementById('x2quotaWrap'); if(b) setTimeout(function(){ b.scrollIntoView({block: 'center'}); }, 150); });
+  engineSel.addEventListener('change', gqRender); gqRender();
+})();
 $x('x2listOai').addEventListener('click', async function(){
   var out = $x('x2listOut'); save();
   var base = (C.oaiBase || '').replace(/\/+$/, '');
@@ -3365,11 +3458,226 @@ window.ENX = {
 updateEnginePill();
 })();
 
+/* ============================================================
+   電腦版／線上版「即時字幕」：瀏覽器語音辨識（Web Speech API）→（可選）翻譯 → 置頂小視窗或頁面內字幕。
+   可完全不翻譯，只顯示聽到的原文。字型／大小／顏色／背景／透明度都能自訂。
+   ============================================================ */
+(function(){
+if(window.AIT && typeof window.AIT.version === 'function') return;      /* APK 有原生版本 */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var KEY = 'ait.wcap';
+var DEF = {lang: 'auto', eng: 'none', where: 'pip', font: 'sans', size: 28, fg: '#ffffff', fg2: '#ffe066', bg: '#000000', op: 70, orig: true, track: false};
+var P = Object.assign({}, DEF);
+try{ Object.assign(P, JSON.parse(localStorage.getItem(KEY) || '{}')); }catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} }
+var FONTS = {
+  sans: ['系統預設黑體', '"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif'],
+  serif: ['明體／襯線', '"Noto Serif TC","PMingLiU","Songti TC",serif'],
+  kai: ['楷體', '"BiauKai","DFKai-SB","Kaiti TC","KaiTi",serif'],
+  round: ['圓體', '"Yuanti TC","Microsoft JhengHei UI","Arial Rounded MT Bold",sans-serif'],
+  mono: ['等寬', 'ui-monospace,Consolas,Menlo,monospace']
+};
+var $ = function(id){ return document.getElementById(id); };
+var running = false, rec = null, win = null, root = null, lines = [], interim = '', stream = null, seq = 0;
+
+/* ---------- UI ---------- */
+var css = document.createElement('style');
+css.textContent = '#wcBtn{position:fixed;right:16px;bottom:16px;z-index:900;box-shadow:var(--shadow);border-radius:999px;padding:10px 16px;}' +
+ '#wcPanel .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}#wcPanel input[type=range]{width:100%;}#wcPanel input[type=color]{width:100%;height:34px;padding:2px;border:1px solid var(--border-soft);border-radius:var(--radius-sm);background:var(--surface-3);}' +
+ '#wcInline{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:950;width:min(92vw,900px);display:none;border-radius:12px;padding:10px 16px;text-align:center;cursor:move;}';
+document.head.appendChild(css);
+
+var btn = document.createElement('button');
+btn.id = 'wcBtn'; btn.className = 'primary'; btn.textContent = '🎙 即時字幕';
+document.body.appendChild(btn);
+
+var mask = document.createElement('div');
+mask.className = 'modal-mask'; mask.id = 'wcPanel';
+var fontOpts = Object.keys(FONTS).map(function(k){ return '<option value="' + k + '">' + FONTS[k][0] + '</option>'; }).join('');
+mask.innerHTML = '<div class="modal-box wide"><h3>🎙 即時字幕（聽到什麼就顯示什麼）</h3>' +
+ '<div id="wcUnsup" class="note err" style="display:none;"></div>' +
+ '<div class="row2"><div class="field"><label class="lbl">說話的語言</label><select id="wcLang"></select></div>' +
+ '<div class="field"><label class="lbl">翻譯方式</label><select id="wcEng"></select></div></div>' +
+ '<div class="field"><label class="lbl">字幕顯示在</label><select id="wcWhere"><option value="pip">置頂小視窗（可蓋在其他軟體上方，Chrome／Edge）</option><option value="page">本頁面底部（可拖曳）</option></select></div>' +
+ '<div class="row2"><div class="field"><label class="lbl">字型</label><select id="wcFont">' + fontOpts + '</select></div>' +
+ '<div class="field"><label class="lbl">字體大小：<span id="wcSizeV"></span> px</label><input type="range" id="wcSize" min="14" max="72" step="1"></div></div>' +
+ '<div class="row2" style="grid-template-columns:repeat(3,1fr);"><div class="field"><label class="lbl">原文顏色</label><input type="color" id="wcFg"></div>' +
+ '<div class="field"><label class="lbl">譯文顏色</label><input type="color" id="wcFg2"></div>' +
+ '<div class="field"><label class="lbl">背景顏色</label><input type="color" id="wcBg"></div></div>' +
+ '<div class="field"><label class="lbl">背景不透明度：<span id="wcOpV"></span>%</label><input type="range" id="wcOp" min="0" max="100" step="5"></div>' +
+ '<label class="chk-line"><input type="checkbox" id="wcOrig"> 翻譯時同時顯示原文</label>' +
+ '<label class="chk-line"><input type="checkbox" id="wcTrack"> 嘗試辨識「分享的分頁／系統聲音」（需新版 Chrome；不支援會自動改用麥克風）</label>' +
+ '<div class="field"><div id="wcPrev" style="border-radius:10px;padding:10px 14px;text-align:center;margin-top:6px;">字幕預覽 Subtitle preview</div></div>' +
+ '<div class="note">原理：瀏覽器內建語音辨識，預設聽「麥克風」。要翻譯影片／音檔，請用喇叭播放讓麥克風收得到（或勾選上面的分頁聲音選項）；視訊通話建議開喇叭。辨識由瀏覽器供應商（Chrome 為 Google）處理語音。選「不翻譯」就只顯示辨識出的原文。</div>' +
+ '<div class="btn-row"><button class="primary" id="wcGo">開始字幕</button><button class="secondary" id="wcClose">關閉視窗</button></div></div>';
+document.body.appendChild(mask);
+
+var inl = document.createElement('div');
+inl.id = 'wcInline'; document.body.appendChild(inl);
+
+function fill(){
+  var ls = $('wcLang'); ls.innerHTML = '';
+  var auto = document.createElement('option'); auto.value = 'auto'; auto.textContent = '跟隨瀏覽器語言（' + (navigator.language || 'zh-TW') + '）'; ls.appendChild(auto);
+  (window.LANGS || []).forEach(function(l){ if(l.code === 'auto') return; var o = document.createElement('option'); o.value = l.code; o.textContent = l.name; ls.appendChild(o); });
+  var es = $('wcEng'); es.innerHTML = '<option value="none">不翻譯（只顯示聽到的原文）</option>';
+  Array.prototype.forEach.call(engineSel.options, function(o){ if(o.hidden || o.value === 'sub') return; var n = document.createElement('option'); n.value = o.value; n.textContent = '翻譯：' + o.textContent; es.appendChild(n); });
+  $('wcLang').value = P.lang; $('wcEng').value = P.eng; $('wcWhere').value = P.where; $('wcFont').value = P.font;
+  if(!$('wcEng').value) $('wcEng').value = 'none';
+  $('wcSize').value = P.size; $('wcFg').value = P.fg; $('wcFg2').value = P.fg2; $('wcBg').value = P.bg; $('wcOp').value = P.op;
+  $('wcOrig').checked = P.orig; $('wcTrack').checked = P.track;
+  var pip = ('documentPictureInPicture' in window);
+  if(!pip){ $('wcWhere').value = 'page'; P.where = 'page'; $('wcWhere').options[0].disabled = true; }
+  var msg = '';
+  if(!SR) msg = '這個瀏覽器沒有語音辨識功能，請改用電腦版 Chrome 或 Edge。';
+  else if(window.claude && typeof window.claude.use === 'function') msg = 'Claude.ai 內嵌頁面無法使用麥克風，請下載獨立版 html 或使用線上版網址開啟。';
+  $('wcUnsup').style.display = msg ? '' : 'none'; $('wcUnsup').textContent = msg;
+  $('wcGo').disabled = !!msg;
+  preview();
+}
+function readUi(){
+  P.lang = $('wcLang').value; P.eng = $('wcEng').value; P.where = $('wcWhere').value; P.font = $('wcFont').value;
+  P.size = +$('wcSize').value; P.fg = $('wcFg').value; P.fg2 = $('wcFg2').value; P.bg = $('wcBg').value; P.op = +$('wcOp').value;
+  P.orig = $('wcOrig').checked; P.track = $('wcTrack').checked; save();
+}
+function rgba(hex, a){ var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function styleBox(el){
+  el.style.background = rgba(P.bg, P.op / 100); el.style.fontFamily = FONTS[P.font][1];
+  el.style.fontSize = P.size + 'px'; el.style.lineHeight = '1.35'; el.style.color = P.fg;
+}
+function preview(){
+  $('wcSizeV').textContent = P.size; $('wcOpV').textContent = P.op;
+  var p = $('wcPrev'); styleBox(p); p.style.fontSize = Math.min(P.size, 34) + 'px';
+  p.innerHTML = '<div style="color:' + P.fg + '">Hello, this is a subtitle.</div>' + (P.eng !== 'none' ? '<div style="color:' + P.fg2 + '">你好，這是字幕。</div>' : '');
+}
+['wcLang', 'wcEng', 'wcWhere', 'wcFont', 'wcSize', 'wcFg', 'wcFg2', 'wcBg', 'wcOp', 'wcOrig', 'wcTrack'].forEach(function(id){
+  $(id).addEventListener('input', function(){ readUi(); preview(); render(); });
+  $(id).addEventListener('change', function(){ readUi(); preview(); render(); });
+});
+fill();
+btn.addEventListener('click', function(){ if(running) return; fill(); mask.classList.add('show'); });
+$('wcClose').addEventListener('click', function(){ mask.classList.remove('show'); });
+$('wcGo').addEventListener('click', function(){ if(running) stop(); else start(); });
+
+/* ---------- 字幕畫面 ---------- */
+function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]; }); }
+function render(){
+  var tr = P.eng !== 'none';
+  var html = '';
+  var shown = lines.slice(-2);
+  shown.forEach(function(l){
+    if(tr){
+      if(P.orig) html += '<div style="color:' + P.fg + ';font-size:' + Math.round(P.size * 0.72) + 'px;opacity:.9">' + esc(l.o) + '</div>';
+      html += '<div style="color:' + P.fg2 + '">' + esc(l.t == null ? '…' : l.t) + '</div>';
+    } else html += '<div style="color:' + P.fg + '">' + esc(l.o) + '</div>';
+  });
+  if(interim) html += '<div style="color:' + P.fg + ';opacity:.6;' + (tr ? 'font-size:' + Math.round(P.size * 0.72) + 'px' : '') + '">' + esc(interim) + '</div>';
+  if(!html && running) html = '<div style="opacity:.5;font-size:' + Math.round(P.size * 0.6) + 'px;color:' + P.fg + '">（聆聽中…）</div>';
+  var el = root || inl;
+  if(!running){ inl.style.display = 'none'; return; }
+  styleBox(el); el.innerHTML = html;
+  if(el === inl) inl.style.display = 'block';
+  else inl.style.display = 'none';
+}
+async function openOut(){
+  root = null;
+  if(P.where === 'pip' && 'documentPictureInPicture' in window){
+    try{
+      win = await documentPictureInPicture.requestWindow({width: 620, height: 190});
+      win.document.body.style.cssText = 'margin:0;display:flex;align-items:flex-end;height:100vh;background:#111;';
+      root = win.document.createElement('div'); root.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 14px;text-align:center;';
+      win.document.body.appendChild(root);
+      win.addEventListener('pagehide', function(){ if(running) stop(true); });
+    }catch(e){ win = null; root = null; toast('無法開啟置頂視窗，改在頁面底部顯示。', true); }
+  }
+}
+(function drag(){
+  var sx, sy, ox, oy, on = false;
+  inl.addEventListener('pointerdown', function(e){ on = true; sx = e.clientX; sy = e.clientY; var r = inl.getBoundingClientRect(); ox = r.left; oy = r.top; inl.setPointerCapture(e.pointerId); });
+  inl.addEventListener('pointermove', function(e){ if(!on) return; inl.style.transform = 'none'; inl.style.left = (ox + e.clientX - sx) + 'px'; inl.style.top = (oy + e.clientY - sy) + 'px'; inl.style.bottom = 'auto'; });
+  inl.addEventListener('pointerup', function(){ on = false; });
+})();
+
+/* ---------- 辨識 ---------- */
+function recLang(){
+  if(P.lang === 'auto') return navigator.language || 'zh-TW';
+  var m = {'zh-TW': 'zh-TW', 'zh-CN': 'zh-CN', 'zh': 'zh-TW', 'en': 'en-US', 'ja': 'ja-JP', 'ko': 'ko-KR', 'es': 'es-ES', 'fr': 'fr-FR', 'de': 'de-DE', 'pt': 'pt-BR', 'ru': 'ru-RU', 'it': 'it-IT', 'th': 'th-TH', 'vi': 'vi-VN', 'id': 'id-ID', 'ar': 'ar-SA', 'hi': 'hi-IN'};
+  return m[P.lang] || P.lang;
+}
+async function translateLine(l){
+  var my = ++seq;
+  try{
+    var r = await translateBatch([l.o], {sourceLang: P.lang === 'auto' ? 'auto' : P.lang, targetLang: tgtSel.value});
+    l.t = (r && r[0]) || l.o;
+  }catch(e){ l.t = l.o; }
+  render();
+}
+function startRec(){
+  rec = new SR();
+  rec.continuous = true; rec.interimResults = true; rec.lang = recLang();
+  rec.onresult = function(ev){
+    var fin = '';
+    interim = '';
+    for(var i = ev.resultIndex; i < ev.results.length; i++){
+      var t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) fin += t; else interim += t;
+    }
+    if(fin.trim()){
+      var l = {o: fin.trim(), t: P.eng === 'none' ? undefined : null};
+      lines.push(l); if(lines.length > 6) lines.shift();
+      interim = '';
+      if(P.eng !== 'none') translateLine(l);
+    }
+    render();
+  };
+  rec.onerror = function(e){
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){ toast('麥克風權限被拒絕，請在網址列允許使用麥克風。', true); stop(true); }
+    else if(e.error === 'audio-capture'){ toast('找不到麥克風。', true); stop(true); }
+  };
+  rec.onend = function(){ if(running){ try{ rec.lang = recLang(); startOne(); }catch(e){ setTimeout(function(){ if(running) startOne(); }, 400); } } };
+  startOne();
+}
+function startOne(){
+  if(stream){
+    var tr = stream.getAudioTracks()[0];
+    try{ rec.start(tr); return; }catch(e){ stream = null; toast('此瀏覽器不能直接辨識分享的聲音，已改用麥克風（請用喇叭播放）。', true); }
+  }
+  rec.start();
+}
+async function start(){
+  readUi();
+  if(P.eng !== 'none'){
+    engineSel.value = P.eng; try{ engineSel.dispatchEvent(new Event('change')); }catch(e){}
+    if(window.ENX && ENX.missingKey && ENX.missingKey(P.eng)){ toast('這個翻譯引擎尚未設定金鑰，請先到「設定」填寫，或選「不翻譯」。', true); return; }
+  }
+  lines = []; interim = ''; running = true;
+  if(P.track){
+    try{ stream = await navigator.mediaDevices.getDisplayMedia({video: true, audio: true}); if(!stream.getAudioTracks().length){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; toast('沒有取得分享的聲音（分享時請勾選「同時分享分頁音訊」），改用麥克風。', true); } }
+    catch(e){ stream = null; }
+  }
+  await openOut();
+  mask.classList.remove('show');
+  $('wcGo').textContent = '停止字幕'; btn.textContent = '⏹ 停止字幕'; btn.classList.add('danger');
+  render();
+  try{ startRec(); }catch(e){ toast('無法啟動語音辨識：' + (e && e.message || e), true); stop(true); }
+}
+function stop(silent){
+  running = false;
+  try{ rec && (rec.onend = null, rec.stop()); }catch(e){}
+  rec = null;
+  if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+  if(win){ try{ win.close(); }catch(e){} win = null; }
+  root = null; inl.style.display = 'none';
+  $('wcGo').textContent = '開始字幕'; btn.textContent = '🎙 即時字幕'; btn.classList.remove('danger');
+}
+btn.addEventListener('click', function(){ if(running){ stop(); mask.classList.remove('show'); } });
+window.WCAP = {open: function(){ if(running) return; fill(); mask.classList.add('show'); }, start: start, stop: stop, running: function(){ return running; }};
+})();
+
 
 /* ============================================================
    MOBILE GLUE — 導覽、設定頁、原生橋接、版本與更新、懸浮翻譯控制
    ============================================================ */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 var GH = {user: 'IanLin1120', repo: 'ai-translator',
   get pages(){ return 'https://' + this.user.toLowerCase() + '.github.io/' + this.repo + '/'; },
   get web(){ return 'https://github.com/' + this.user + '/' + this.repo; }};
@@ -3963,6 +4271,39 @@ showView('trans');
 updateEnginePill();
 if(!isApp){ $('cardClaude').querySelector('.desc').textContent = '用你的 Claude 月訂閱額度翻譯（不需要 API 金鑰）：直接在 claude.ai 開啟網頁版翻譯器。'; }
 Upd.boot();
+
+/* ============================================================
+   網頁版（離線 html／線上 artifact／GitHub Pages）適配：介面與 APK 相同，
+   原生才有的功能改用瀏覽器能做到的替代方案。APK 內不執行。
+   ============================================================ */
+(function(){
+if(isApp) return;
+var ws = function(id){ return document.getElementById(id); };
+/* 懸浮即時翻譯：改用「截圖翻譯卡」的擷取畫面＋置頂小視窗 */
+var fw = ws('flWebOnly');
+if(fw){
+  fw.className = 'note';
+  fw.innerHTML = '🪟 <b>網頁版懸浮翻譯</b>：到下方「截圖翻譯」按 <b>開始擷取畫面</b>，選要翻譯的視窗，再按 <b>開啟懸浮即時翻譯</b>，結果會顯示在可蓋在其他軟體上方的置頂小視窗（Chrome／Edge 電腦版）。手機請安裝 APK 版。';
+}
+var capb = ws('btnCapture'); if(capb){ capb.classList.remove('hide'); capb.textContent = '🖥 開始擷取畫面（電腦）'; }
+['btnFloat', 'btnStopCap', 'liveOpts'].forEach(function(id){ var e = ws(id); if(e) e.classList.remove('hide'); });
+/* 即時字幕：改用瀏覽器語音辨識 */
+var cw = ws('capWebOnly');
+if(cw){
+  cw.className = 'note';
+  cw.innerHTML = '🎙 <b>網頁版即時字幕</b>：使用瀏覽器內建語音辨識（Chrome／Edge），可只顯示原文不翻譯，字型、大小、顏色、背景都能調。要翻譯影片請讓喇叭播放給麥克風收音，或在面板勾選「分享分頁聲音」。<div class="btn-row" style="margin-top:8px"><button class="primary" id="btnWcOpen">開啟即時字幕設定</button></div>';
+  var ob = ws('btnWcOpen'); if(ob) ob.addEventListener('click', function(){ if(window.WCAP && WCAP.open) WCAP.open(); else toast('此瀏覽器無法使用語音辨識', true); });
+}
+/* 手機版面已有導覽列，隱藏浮動的字幕鈕（改由卡片開啟） */
+var wb = ws('wcBtn'); if(wb && ws('nav')) wb.style.display = 'none';
+/* Claude 訂閱說明 */
+var cc = ws('cardClaude');
+if(cc){
+  var d = cc.querySelector('.desc');
+  if(d && IN_CLAUDE) d.innerHTML = '✅ 你正在 Claude.ai 裡：把「翻譯引擎」選成 <b>AI 翻譯（Claude）</b>，就會用你的 Claude 月訂閱額度翻譯，不需 API 金鑰（第一次按「允許」）。Groq／Gemini 等外部服務在這裡會被 Claude.ai 的安全政策擋住，要用請開 GitHub 網頁版或離線檔。';
+  else if(d) d.innerHTML = 'Claude 月訂閱只能在 <b>claude.ai 裡的線上版（artifact）</b>或 <b>APK</b> 使用：在線上版的「翻譯引擎」選 <b>AI 翻譯（Claude）</b> 即可，不需 API 金鑰。這個獨立網頁／離線檔受瀏覽器安全限制無法借用訂閱，請改用 Groq／Gemini 等免費金鑰，或按下面開啟 claude.ai。';
+}
+})();
 
 </script>
 </body>
