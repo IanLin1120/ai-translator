@@ -4,7 +4,7 @@
 <script>/* 線上更新開機程式：手機上若已下載比 APK 內建更新的介面版本，就改用新版（存在 IndexedDB）。
    新版連續兩次沒有正常開啟 → 自動退回 APK 內建版本。網址加上 #builtin 也會強制使用內建版本。 */
 (function () {
-  var B = '1.7.0'; if (!window.__OTA) window.APP_BUILTIN = B;
+  var B = '1.7.1'; if (!window.__OTA) window.APP_BUILTIN = B;
   if (window.__OTA || location.hash.indexOf('builtin') >= 0) return;
   var v = null; try { v = JSON.parse(localStorage.getItem('ait.ota') || 'null'); } catch (e) {}
   function gt(a, b) { a = String(a).split('.').map(Number); b = String(b).split('.').map(Number); for (var i = 0; i < Math.max(a.length, b.length); i++) { var p = a[i] || 0, q = b[i] || 0; if (p !== q) return p > q; } return false; }
@@ -4593,7 +4593,7 @@ window.WCAP = {open: function(){ if(running) return; fill(); mask.classList.add(
 /* ============================================================
    MOBILE GLUE — 導覽、設定頁、原生橋接、版本與更新、懸浮翻譯控制
    ============================================================ */
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.7.1';
 var GH = {user: 'IanLin1120', repo: 'ai-translator',
   get pages(){ return 'https://' + this.user.toLowerCase() + '.github.io/' + this.repo + '/'; },
   get web(){ return 'https://github.com/' + this.user + '/' + this.repo; }};
@@ -5219,6 +5219,53 @@ if(cc){
   if(d && IN_CLAUDE) d.innerHTML = '✅ 你正在 Claude.ai 裡：把「翻譯引擎」選成 <b>AI 翻譯（Claude）</b>，就會用你的 Claude 月訂閱額度翻譯，不需 API 金鑰（第一次按「允許」）。Groq／Gemini 等外部服務在這裡會被 Claude.ai 的安全政策擋住，要用請開 GitHub 網頁版或離線檔。';
   else if(d) d.innerHTML = '用 <b>Claude 月訂閱</b>翻譯（不用 API 金鑰）：在「翻譯引擎」選 <b>Claude 月訂閱（複製貼上橋接）</b>。網頁不能像 APK 一樣在背景自動開線上版（瀏覽器安全限制），所以改成：本頁產生任務 → 貼到 Claude 線上版的「橋接接收區」→ 複製結果貼回來。文字、Excel、Word、PDF、郵件都能用，任務會合併成較大的段落，來回次數很少。';
 }
+})();
+
+/* ============================================================
+   自動辨識「能不能在背景用 Claude 月訂閱」並自動選引擎：
+   · APK：背景網頁版翻譯器（cengReq）→ 自動選「Claude 訂閱」，所有翻譯（文字／Excel／Word／PDF／郵件／圖片）都在背景跑
+   · Claude.ai 裡的線上版：直接用 sample → 自動選「AI 翻譯（Claude）」
+   · 離線 HTML／GitHub 網頁版：瀏覽器限制，無法背景使用月訂閱 → 維持原本引擎（可選「複製貼上橋接」）
+   使用者手動換引擎後會自動關閉「自動選擇」，避免每次被改回去。
+   ============================================================ */
+(function(){
+var mode = isApp ? (subSupported() ? 'apk' : 'apk-old') : (IN_CLAUDE ? 'claude' : 'web');
+var on = lsGet('ait.autoEng', true);
+function setEngine(v){
+  if(!Array.prototype.some.call(engineSel.options, function(o){ return o.value === v && !o.hidden; })) return false;
+  if(engineSel.value !== v){ engineSel.value = v; engineSel.dispatchEvent(new Event('change')); }
+  return true;
+}
+var NAMES = {apk: 'APK（背景網頁版翻譯器）', claude: 'Claude.ai 線上版（直接使用訂閱）', web: '離線 HTML／GitHub 網頁版', 'apk-old': 'APK（舊版原生）'};
+function describe(){
+  var bg = mode === 'apk' || mode === 'claude';
+  var t = '目前環境：<b>' + NAMES[mode] + '</b>　背景使用月訂閱：<b style="color:' + (bg ? 'var(--success,#3E5C1F)' : 'var(--danger,#8C2A20)') + '">' + (bg ? '可以' : '不行') + '</b>';
+  if(mode === 'web') t += '<br>瀏覽器安全限制：一般網頁無法在背景連到 Claude 月訂閱。想背景自動翻譯請改用 APK 或 Claude.ai 線上版；在這裡可用「Gemini／Groq 免費金鑰」或「Opus-MT 離線」在背景翻譯，月訂閱只能用「複製貼上橋接」。';
+  if(mode === 'apk') t += '<br>文字、圖片、Excel、Word、PDF、郵件都會在背景自動翻譯。第一次需登入 claude.ai 並授權一次。';
+  if(mode === 'claude') t += '<br>文字、Excel、Word、PDF、郵件都直接用月訂閱翻譯（請讓這個分頁保持開著）。';
+  return t;
+}
+var host = document.getElementById('cardClaude');
+if(host){
+  var box = document.createElement('div');
+  box.innerHTML = '<label class="chk-line" style="margin-top:8px"><input type="checkbox" id="autoEng"> 自動選擇最佳引擎（偵測到可背景使用月訂閱時自動切換）</label><div class="note" id="autoEngSt" style="line-height:1.7"></div>';
+  host.appendChild(box);
+  var cb = box.querySelector('#autoEng'), st = box.querySelector('#autoEngSt');
+  cb.checked = !!on; st.innerHTML = describe();
+  cb.addEventListener('change', function(){ on = cb.checked; lsSet('ait.autoEng', on); if(on) pick(); });
+}
+engineSel.addEventListener('change', function(e){
+  if(e.isTrusted && on){ on = false; lsSet('ait.autoEng', false); var c = document.getElementById('autoEng'); if(c) c.checked = false; }
+});
+function pick(){
+  if(!on) return;
+  if(mode === 'apk'){ if(setEngine('sub')) NAT.call('cengStart', claudeUrl()); }
+  else if(mode === 'claude'){
+    var t0 = Date.now();
+    (function wait(){ if(!on) return; if(typeof sampleFn !== 'undefined' && sampleFn){ setEngine('ai'); } else if(Date.now() - t0 < 10000) setTimeout(wait, 250); })();
+  }
+}
+pick();
 })();
 
 </script>
